@@ -1,0 +1,18 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "description": "[<img src=\"https://github.com/HonestInsurance/Resources/blob/master/branding/HIC_Logo_Vertical.png?raw=true\" width=\"150\">](https://www.honestinsurance.net)",
+  "main": "truffle.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "truffle test"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bignumber.js": "^6.0.0",
+    "expect.js": "^0.3.1"
+  }
+}
