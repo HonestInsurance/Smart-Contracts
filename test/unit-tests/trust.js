@@ -50,8 +50,11 @@ exports.adjustDaylightSaving = async () => {
     
     // Verify the log entries in the pool
     if (isWinterTime == true)
-        expect("ChangeToSummerTime  ").to.be.eql(miscFunc.hexToAscii(miscFunc.eventLog('Pool', tx, 0, 0), 20));
-    else expect("ChangeToWinterTime  ").to.be.eql(miscFunc.hexToAscii(miscFunc.eventLog('Pool', tx, 0, 0), 20));
+        miscFunc.verifyPoolLog(tx, 0, 'ChangeToSummerTime', td.currentPoolDay, 0, null);
+    else miscFunc.verifyPoolLog(tx, 0, 'ChangeToWinterTime', td.currentPoolDay, 0, null);
+
+    // Verify the trust log entry
+    miscFunc.verifyTrustLog(tx, 1, 'ChangeInDaylightSaving', td.accounts[0], miscFunc.getEmptyHash(), null);
 
     // Verify the log entries in the pool
     expect(await td.pool.daylightSavingScheduled()).to.be(true);

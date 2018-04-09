@@ -14,7 +14,6 @@ const td = require("../misc/testData.js");
 // --- Solidity Contract Info ---
 // contract Bond is SetupI, IntAccessI, NotificationI, HashMapI
 // event LogBond(bytes32 indexed bondHash, address indexed owner, bytes32 indexed info, uint timestamp, uint state);
-// idx                           0                         1                      2          3               4
 // ----------------
 
 // createBond(uint _principal_Cu, bytes32 _hashOfReferenceBond)
@@ -24,14 +23,12 @@ exports.createBond = async (_bondPrincipal, _hashOfReferenceBond, _bondOwnerAcco
     // Create a new Bond
     const tx = await td.bond.createBond(_bondPrincipal, _hashOfReferenceBond, {from: td.accounts[_bondOwnerAccountIdx]});
     // Get the bond hash
-    const bondHash = miscFunc.eventLog('Bond', tx, 0, 0);
+    const bondHash = miscFunc.verifyBondLog(tx, 0);
     // Save the bond hash
     td.bHash[bondHashMapInfo[1].valueOf()] = bondHash;
 
     // Event 0 - Bond creation
-    expect(td.accounts[_bondOwnerAccountIdx]).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Bond', tx, 0, 1)));
-    expect(_bondPrincipal).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 0, 2)));
-    expect(0).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 0, 4)));
+    miscFunc.verifyBondLog(tx, 0, bondHash, td.accounts[_bondOwnerAccountIdx], _bondPrincipal, null, 0);
         
     // If bond has been only created
     if (_hashOfReferenceBond == 0x0) {
@@ -55,21 +52,12 @@ exports.createBond = async (_bondPrincipal, _hashOfReferenceBond, _bondOwnerAcco
         td.wc_transit_cu = +td.wc_transit_cu + +_bondPrincipal;
 
         // Event 1 - Bond that is performing the securing service
-        expect(_hashOfReferenceBond).to.be.eql(miscFunc.eventLog('Bond', tx, 1, 0));
-        expect(td.accounts[_bondOwnerAccountIdx]).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Bond', tx, 1, 1)));
-        expect(bondHash).to.be.eql(miscFunc.eventLog('Bond', tx, 1, 2));
-        expect(5).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 1, 4)));
-
+        miscFunc.verifyBondLog(tx, 1, _hashOfReferenceBond, td.accounts[_bondOwnerAccountIdx], bondHash, null, 5);
         // Event 2 - Bond that is secured
-        expect(bondHash).to.be.eql(miscFunc.eventLog('Bond', tx, 2, 0));
-        expect(_hashOfReferenceBond).to.be.eql(miscFunc.eventLog('Bond', tx, 2, 2));
-        expect(2).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 2, 4)));
-
+        miscFunc.verifyBondLog(tx, 2, bondHash, td.accounts[_bondOwnerAccountIdx], _hashOfReferenceBond, null, 2); 
         // Event 3 - Bond signing
-        expect(bondHash).to.be.eql(miscFunc.eventLog('Bond', tx, 3, 0));
-        expect(finalBondYield).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 3, 2)));
-        expect(3).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 3, 4)));
-
+        miscFunc.verifyBondLog(tx, 3, bondHash, td.accounts[_bondOwnerAccountIdx], finalBondYield, null, 3);
+        
         // Call the function to verify all bond data of the newly created bond
         await miscFunc.verifyBondData(await td.bond.dataStorage(bondHash), bondHashMapInfo[1].valueOf(), td.accounts[_bondOwnerAccountIdx], 
             null, _bondPrincipal, finalBondYield, null, null, null, null, 3, _hashOfReferenceBond);
@@ -127,10 +115,7 @@ exports.processMaturedBond = async (_bondHash) => {
     const tx = await td.timer.manualPing(td.bond.address, 0, _bondHash, td.futureEpochTimeStamp, {from: td.accounts[0]});
 
     // Check the bond event details
-    expect(_bondHash).to.be.eql(miscFunc.eventLog('Bond', tx, 0, 0));
-    expect(initialBondData[1].valueOf()).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Bond', tx, 0, 1)));
-    expect(bondPayoutAmount).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 0, 2)));
-    expect(bondFinalState).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, 0, 4)));
+    miscFunc.verifyBondLog(tx, 0, _bondHash, initialBondData[1], bondPayoutAmount, null, bondFinalState);
     
     // If the payout amount is greater than 0 ensure a payment advice entry has been created
     if (bondPayoutAmount > 0) {

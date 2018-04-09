@@ -40,12 +40,8 @@ async function processPaymentAdvice(_idx) {
     const tx = await td.bank.processPaymentAdvice(_idx, td.bankTransactionIdx, {from: td.accounts[0]});
 
     // Verify the bank transaction event details
-    expect(expectedAccountType).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, 0, 1))); // "Bank account type is invalid"
-    expect(true).to.be.eql(Boolean(miscFunc.eventLog('Bank', tx, 0, 2)));     // "Bank payment success flag is invalid"
-    expect(paymentAdvice[1]).to.be.eql(miscFunc.eventLog('Bank', tx, 0, 3));  // "Bank payment account hash recipient is invalid"
-    expect(paymentAdvice[2]).to.be.eql(miscFunc.eventLog('Bank', tx, 0, 4));  // "Bank payment subject is invalid"
-    expect(1).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, 0, 7)));      // "Bank credit/debit (transaction type) is invalid"
-    expect(paymentAdvice[3].valueOf()).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, 0, 8)));// "Bank debit amount is invalid"
+    miscFunc.verifyBankLog(tx, 0, null, expectedAccountType, true, paymentAdvice[1],
+        paymentAdvice[2], null, null, 1, paymentAdvice[3]);
 
     // If it is an internal payment execute the DEPOSIT transaction
     if ((paymentAdvice[0] == 1) || (paymentAdvice[0] == 3)) {
@@ -92,34 +88,16 @@ exports.processAccountCredit = async (_accountType, _paymentAccountHashSender, _
     if (_expectedSuccess == false)
         eventIdx--;
 
-    // event LogBank(bytes32 indexed internalReferenceHash, uint indexed accountType, bool indexed success,
-    // idx                                             0                                   1                         2
-    //     bytes32 paymentAccountHash, bytes32 paymentSubject, bytes32 info, 
-    // idx         3                           4                       5
-    //     uint timestamp, uint transactionType, uint amount);
-    // idx      6               7                     8                     
-    // Check the event details
-    expect(_expectedHash).to.be.eql(miscFunc.eventLog('Bank', tx, eventIdx, 0));// "Internal reference hash for this bank transaction is invalid");
-    expect(_accountType).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, eventIdx, 1)));// "Bank account type is invalid");
-    expect(_expectedSuccess).to.be.eql(Boolean(miscFunc.eventLog('Bank', tx, eventIdx, 2)));// "Bank payment success flag is invalid");
-    expect(_paymentAccountHashSender).to.be.eql(miscFunc.eventLog('Bank', tx, eventIdx, 3));// "Bank payment account hash sender is invalid");
-    expect(_paymentSubject).to.be.eql(miscFunc.eventLog('Bank', tx, eventIdx, 4));// "Bank payment subject is invalid");
-    expect(true).to.be.eql(miscFunc.eventLog('Bank', tx, eventIdx, 5).indexOf(_expectedInfo) != -1);// "Bank payment info is invalid");
-    expect(0).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, eventIdx, 7)));// "Bank credit/debit (transaction type) is invalid");
-    expect(_bankCreditAmount_Cu).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, eventIdx, 8)));// "Bank deposit amount is invalid");
+    // Verify the bank transaction logs
+    miscFunc.verifyBankLog(tx, eventIdx, _expectedHash, _accountType, _expectedSuccess, _paymentAccountHashSender,
+        _paymentSubject, _expectedInfo, null, 0, _bankCreditAmount_Cu);
 
     if (_expectedSuccess == false) {
         // Increase the event Idx
         eventIdx++;
         // Check the event details of the refund operation
-        //expect(_expectedHash, miscFunc.eventLog('Bank', tx, eventIdx, 0), "Internal reference hash for this bank transaction is invalid");
-        expect(_accountType).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, eventIdx, 1)));// "Bank account type is invalid");
-        expect(true).to.be.eql(Boolean(miscFunc.eventLog('Bank', tx, eventIdx, 2)));// "Bank payment success flag is invalid");
-        expect(_paymentAccountHashSender).to.be.eql(miscFunc.eventLog('Bank', tx, eventIdx, 3));// "Bank payment account hash sender is invalid");
-        expect(_paymentSubject).to.be.eql(miscFunc.eventLog('Bank', tx, eventIdx, 4));// "Bank payment subject is invalid");
-        expect(true).to.be.eql(miscFunc.eventLog('Bank', tx, eventIdx, 5).indexOf('Refund') != -1);// "Bank payment info is invalid");
-        expect(1).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, eventIdx, 7)));// "Bank credit/debit (transaction type) is invalid");
-        expect(_bankCreditAmount_Cu).to.be.eql(parseInt(miscFunc.eventLog('Bank', tx, eventIdx, 8)));// "Bank deposit amount is invalid");
+        miscFunc.verifyBankLog(tx, eventIdx, null, _accountType, true, _paymentAccountHashSender,
+            _paymentSubject, _expectedInfo, null, 1, _bankCreditAmount_Cu);
     }
     
     // Verify the bank transaction flag for the specified transaction idx is set to true
@@ -153,36 +131,26 @@ exports.bondPrincipalCredit = async (_bondHash) => {
         // Adjust wc_bond_cu
         td.wc_bond_cu = +td.wc_bond_cu - +bondPrincipal;
 
-        // Check the bond event details
-        // event LogBond(bytes32 indexed bondHash, address indexed owner, bytes32 indexed info, uint timestamp, uint state);
-        // idx                           0                         1                      2          3               4
-        // Event 1 - Bond is secured with Bond Principal
-        expect(_bondHash).to.be.eql(miscFunc.eventLog('Bond', tx, eventIdx, 0));// "Bond hash is invalid.");
-        expect(bondPrincipal).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, eventIdx, 2)));//  "Bond credit amount is incorrect");
-        expect(1).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, eventIdx, 4)));//  "Securing bond is in incorrect state");
-        eventIdx++;
-        // Event 2 - Bond signing
-        expect(_bondHash).to.be.eql(miscFunc.eventLog('Bond', tx, eventIdx, 0));//  "Bond hash is invalid.");
-        expect(finalBondYield).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, eventIdx, 2)));//  "Bond yield is incorrect");
-        expect(3).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, eventIdx, 4)));//  "Bond is in incorrect state");
-        eventIdx++;
+        // Event 0 - Bond is secured with Bond Principal
+        miscFunc.verifyBondLog(tx, 0, _bondHash, initialBondData[1], bondPrincipal, null, 1);
+        // Event 1 - Bond signing
+        miscFunc.verifyBondLog(tx, 1, _bondHash, initialBondData[1], finalBondYield, null, 3);
+        // Event 2 - Bond active
+        miscFunc.verifyBondLog(tx, 2, _bondHash, initialBondData[1], initialBondData[8], null, 4);
     }
     else {
         // If bond was SecuredReferenceBond (was in a Signed state before the bank transaction) the security bond event need to be verified
-        // Verify the bond that provided the underwriting is in issued state again
-        expect(initialBondData[10].valueOf(), parseInt(miscFunc.eventLog('Bond', tx, eventIdx, 0)));//  "Bond hash is invalid");
-        expect(4, parseInt(miscFunc.eventLog('Bond', tx, eventIdx, 4)));//  "Bond state is invalid");
-        eventIdx++;
-
+        // Event 0 - Bond that is providing the underwriting is active again
+        miscFunc.verifyBondLog(tx, 0, initialBondData[10], initialBondData[1], null, null, 4);
+        // Event 2 - Bond active
+        miscFunc.verifyBondLog(tx, 1, _bondHash, initialBondData[1], initialBondData[8], null, 4);
+        
         // Reduce WC_Transit_Cu as bond was secured by another bond
         td.wc_transit_cu = +td.wc_transit_cu - +bondPrincipal;
         // Safe the final bond yield
         finalBondYield = initialBondData[4].valueOf();
     }
     
-    // Verify the bond event log of the issued log
-    expect(4).to.be.eql(parseInt(miscFunc.eventLog('Bond', tx, eventIdx, 4))); //, "Bond state is invalid");
-
     // Adjust WC_Bal_FA_Cu
     td.wc_bal_fa_cu = +td.wc_bal_fa_cu + +bondPrincipal;
 
@@ -230,10 +198,7 @@ exports.policyPremiumCredit = async (_policyHash, _amount_cu) => {
     // If the policy is in a paused state and this is the first ever credit to this policy
     if ((initialPolicyData[7].valueOf() == 0) &&  (initialPolicyData[5].valueOf() == 0)) {
         // Verify the policy event log
-        expect(_policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 0, 0));  // "Policy hash is incorrect");
-        expect(initialPolicyData[1].valueOf()).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Policy', tx, 0, 1)));  // "Policy owner address is invalid");
-        expect(1).to.be.eql(parseInt(miscFunc.eventLog('Policy', tx, 0, 4)));  // "Policy state is incorrect");
-
+        miscFunc.verifyPolicyLog(tx, 0, _policyHash, initialPolicyData[1], miscFunc.getEmptyHash(), null, 1);
         // Add the risk points
         td.totalRiskPoints = +td.totalRiskPoints + +initialPolicyData[4].valueOf();
         // Change the expected policy's state to issued (1)
@@ -244,10 +209,7 @@ exports.policyPremiumCredit = async (_policyHash, _amount_cu) => {
     // If the state of the Policy was Lapsed
     if (initialPolicyData[7].valueOf() == 2) {
         // Verify the policy event log
-        expect(_policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 0, 0));  // "Policy hash is incorrect");
-        expect(initialPolicyData[1].valueOf()).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Policy', tx, 0, 1)));  // "Policy owner address is invalid");
-        expect(3).to.be.eql(parseInt(miscFunc.eventLog('Policy', tx, 0, 4)));  // "Policy state is incorrect");
-
+        miscFunc.verifyPolicyLog(tx, 0, _policyHash, initialPolicyData[1], miscFunc.getEmptyHash(), null, 3);
         // Change the expected policy's state to post lapsed (3)
         initialPolicyData[7] = 3;
         // Change the last reconciliation day to today

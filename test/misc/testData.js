@@ -8,16 +8,6 @@
 // Store the pre-loaded accounts that hold ether for submitting transactions
 exports.accounts;
 
-// Load the artifacts of the contracts that are required for testing
-// exports.abiPool = artifacts.require("./Pool.sol");
-// exports.abiBond = artifacts.require("./Bond.sol");
-// exports.abiBank = artifacts.require("./Bank.sol");
-// exports.abiPolicy = artifacts.require("./Policy.sol");
-// exports.abiSettlement = artifacts.require("./Settlement.sol");
-// exports.abiAdjustor = artifacts.require("./Adjustor.sol");
-// exports.abiTimer = artifacts.require("./Timer.sol");
-// exports.abiTrust = artifacts.require("./Trust.sol");
-
 // The contract instances of the deployed solidity contracts
 exports.pool;
 exports.bond;
@@ -28,9 +18,14 @@ exports.adjustor;
 exports.timer;
 exports.trust;
 
-//  BOND                 //  ADJUSTOR            // SETTLEMENT           // POLICY
-exports.bIdx = 0;        exports.aIdx = 0;       exports.sIdx = 0;       exports.pIdx = 0;
-exports.bHash = [];      exports.aHash = [];     exports.sHash = [];     exports.pHash = [];
+// The event log file abi decoder object for all smart contract event log files
+exports.abiDecoder;
+
+// Arrays to store the bond, adjustor, settlement and policy hashes
+exports.bHash = [];
+exports.aHash = [];
+exports.sHash = [];
+exports.pHash = [];
 
 // Unique bank transaction idx to be provided from the bank (used to avioid double processing)
 exports.bankTransactionIdx = 5000;

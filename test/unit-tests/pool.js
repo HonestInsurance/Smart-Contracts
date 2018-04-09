@@ -28,9 +28,8 @@ exports.setWcExpenses = async (_wcExpensesPerDay_Cu) => {
     // Update wc expenses in the pool
     const tx = await td.trust.setWcExpenses(td.wc_exp_cu, {from: td.accounts[0]});
 
-    // Verify the event details for the pool day and wc expenses are correct
-    expect(td.currentPoolDay).to.be.eql(miscFunc.eventLog('Pool', tx, 0, 1));
-    expect(td.wc_exp_cu).to.be.eql(miscFunc.eventLog('Pool', tx, 0, 2));
+    // Verify Event 0
+    miscFunc.verifyPoolLog(tx, 0, 'WcExpensesAdjustmentCu', td.currentPoolDay, td.wc_exp_cu, null);
     
     // Verify the new value for wc expenses set in the pool
     expect(td.wc_exp_cu).to.be.eql((await td.pool.WC_Exp_Cu()).valueOf());
@@ -74,4 +73,3 @@ exports.acceleratePoolYield = async (_intervals) => {
     // Save the new yield in testdata
     td.b_yield_ppb = tempYield;
 }
-

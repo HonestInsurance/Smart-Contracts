@@ -1,4 +1,4 @@
 bin/*
 build/*
-test/negative-tests/*
 node_modules/*
+test/negative-tests/*

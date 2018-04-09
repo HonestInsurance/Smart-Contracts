@@ -8,6 +8,7 @@
 // Load the test data to initialise the deployed contract variables
 const td = require("../test/misc/testData.js");
 const txFunc = require("../test/misc/txFunc.js");
+const abiDecoder = require('abi-decoder');
 
 // Load the artifacts of the contracts that are deployed
 const abiLib = artifacts.require("./Lib.sol");
@@ -61,6 +62,16 @@ module.exports = async (deployer, network, accounts) => {
         td.adjustor = await abiAdjustor.deployed();
         td.timer = await abiTimer.deployed();
         td.trust = await abiTrust.deployed();
+
+        // All all the event log files to the abi decoder object
+        td.abiDecoder = abiDecoder;
+        td.abiDecoder.addABI(td.trust.abi);
+        td.abiDecoder.addABI(td.pool.abi);
+        td.abiDecoder.addABI(td.bond.abi);
+        td.abiDecoder.addABI(td.bank.abi);
+        td.abiDecoder.addABI(td.policy.abi);
+        td.abiDecoder.addABI(td.settlement.abi);
+        td.abiDecoder.addABI(td.adjustor.abi);
 
         // Initialise pool ecosystem; Link all contracts together and set next overnight processing timestamp
         await td.trust.initEcosystem(
