@@ -25,24 +25,16 @@ exports.createSettlement = async (_adjustorIdx, _policyHash, _documentHash) => {
     const tx = await td.settlement.createSettlement(td.aHash[_adjustorIdx], _policyHash, _documentHash, {from: td.accounts[_adjustorIdx]});
     
     // Get the settlement hash
-    const settlementHash = miscFunc.eventLog('Settlement', tx, 0, 0);
+    const settlementHash = miscFunc.verifySettlementLog(tx, 0);
     // Save the settlement hash
     td.sHash[settlementHashMapInfo[1].valueOf()] = settlementHash;
     
-    // Event(s) is/are triggered as part of the settlement creation log[0]: Settlement event
-    // event LogSettlement(bytes32 indexed settlementHash, bytes32 indexed adjustorHash, bytes32 indexed info, uint timestamp, uint state);
-    // idx                                 0                               1                             2          3               4
     // Event 0 - Settlement creation
-    expect(td.aHash[_adjustorIdx]).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 1));
-    expect(_policyHash).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 2));
-    expect(0).to.be.eql(parseInt(miscFunc.eventLog('Settlement', tx, 0, 4)));
-    
-    if (_documentHash != miscFunc.getEmptyHash()) {
-        // Event 1 - Settlement document added event
-        expect(td.aHash[_adjustorIdx]).to.be.eql(miscFunc.eventLog('Settlement', tx, 1, 1));
-        expect(_documentHash).to.be.eql(miscFunc.eventLog('Settlement', tx, 1, 2));
-        expect(1).to.be.eql(parseInt(miscFunc.eventLog('Settlement', tx, 1, 4)));
-    }
+    miscFunc.verifySettlementLog(tx, 0, settlementHash, td.aHash[_adjustorIdx], _policyHash, null, 0);
+
+    // Event 1 - If a settlement document has been added
+    if (_documentHash != miscFunc.getEmptyHash())
+        miscFunc.verifySettlementLog(tx, 1, settlementHash, td.aHash[_adjustorIdx], _documentHash, null, 1);
       
     // Call the function to verify all settlement data
     await miscFunc.verifySettlementData(await td.settlement.dataStorage.call(settlementHash), settlementHashMapInfo[1].valueOf(), 0, (_documentHash == miscFunc.getEmptyHash() ? 0 : 1));
@@ -55,15 +47,8 @@ exports.createSettlement = async (_adjustorIdx, _policyHash, _documentHash) => {
 exports.addSettlementInfo = async (_settlementIdx, _adjustorIdx, _documentHash) => {
     // Add document hash to the specified settlement
     const tx = await td.settlement.addSettlementInfo(td.sHash[_settlementIdx], td.aHash[_adjustorIdx], _documentHash, {from: td.accounts[_adjustorIdx]});
-    
-    // Event is triggered as part of the settlement update log[0]: Settlement event
-    // event LogSettlement(bytes32 indexed settlementHash, bytes32 indexed adjustorHash, bytes32 indexed info, uint timestamp, uint state);
-    // idx                                 0                               1                             2          3               4
-    // Event 0 - Settlement document added event
-    expect(td.sHash[_settlementIdx]).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 0));
-    expect(td.aHash[_adjustorIdx]).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 1));
-    expect(_documentHash).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 2));
-    expect(1).to.be.eql(parseInt(miscFunc.eventLog('Settlement', tx, 0, 4)));
+    // Verify event 0
+    miscFunc.verifySettlementLog(tx, 0, td.sHash[_settlementIdx], td.aHash[_adjustorIdx], _documentHash, null, 1);
 }
 
 // setExpectedSettlementAmount(bytes32 _settlementHash, bytes32 _adjustorHash, uint _expectedSettlementAmount) 
@@ -93,15 +78,8 @@ exports.closeSettlement = async (_settlementIdx, _adjustorIdx, _documentHash, _a
 
     // Close the settlement
     const tx = await td.settlement.closeSettlement(td.sHash[_settlementIdx], td.aHash[_adjustorIdx], _documentHash, _amount_cu, {from: td.accounts[_adjustorIdx]});
-
-    // Event is triggered as part of the settlement closure log[0]: Settlement event
-    // event LogSettlement(bytes32 indexed settlementHash, bytes32 indexed adjustorHash, bytes32 indexed info, uint timestamp, uint state);
-    // idx                                 0                               1                             2          3               4
-    // Event 0 - Settlement closed
-    expect(td.sHash[_settlementIdx]).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 0));
-    expect(td.aHash[_adjustorIdx]).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 1));
-    expect(_documentHash).to.be.eql(miscFunc.eventLog('Settlement', tx, 0, 2));
-    expect(2).to.be.eql(parseInt(miscFunc.eventLog('Settlement', tx, 0, 4)));
+    // Verify event 0
+    miscFunc.verifySettlementLog(tx, 0, td.sHash[_settlementIdx], td.aHash[_adjustorIdx], _documentHash, null, 2);
 
     // Verify new settlement data
     await miscFunc.verifySettlementData(await td.settlement.dataStorage.call(td.sHash[_settlementIdx]), _settlementIdx, _amount_cu, 2);

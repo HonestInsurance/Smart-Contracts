@@ -26,20 +26,13 @@ exports.createPolicy = async (_policyRiskPoints, _policyOwnerAccountIdx, _adjust
     const tx = await td.policy.createPolicy(td.aHash[_adjustorIdx], td.accounts[_policyOwnerAccountIdx], miscFunc.getIdxHash(_policyRiskPoints), _policyRiskPoints, {from: td.accounts[_adjustorIdx]});
 
     // Get the policy hash
-    const policyHash = miscFunc.eventLog('Policy', tx, 0, 0);
+    const policyHash = miscFunc.verifyPolicyLog(tx, 0);
     // Save the policy hash
     td.pHash[policyHashMapInfo[1].valueOf()] = policyHash;
     
-    // 2 Events are triggered as part of the policy creation
-    expect(policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 0, 0));
-    expect(td.accounts[_policyOwnerAccountIdx]).to.be.eql( miscFunc.getAdrFromBytes32(miscFunc.eventLog('Policy', tx, 0, 1)));
-    expect(_policyRiskPoints).to.be.eql( parseInt(miscFunc.eventLog('Policy', tx, 0, 2)));
-    expect(0).to.be.eql( parseInt(miscFunc.eventLog('Policy', tx, 0, 4)));
-    
-    expect(policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 1, 0));
-    expect(td.accounts[_policyOwnerAccountIdx]).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Policy', tx, 1, 1)));
-    expect(miscFunc.getIdxHash(_policyRiskPoints)).to.be.eql(miscFunc.eventLog('Policy', tx, 1, 2));
-    expect(0).to.be.eql(parseInt(miscFunc.eventLog('Policy', tx, 1, 4)));
+    // 2 Events are triggered as part of the Policy creation
+    miscFunc.verifyPolicyLog(tx, 0, policyHash, td.accounts[_policyOwnerAccountIdx], _policyRiskPoints, null, 0);
+    miscFunc.verifyPolicyLog(tx, 1, policyHash, td.accounts[_policyOwnerAccountIdx], miscFunc.getIdxHash(_policyRiskPoints), null, 0);
 
     // Call the function to verify all policy data
     await miscFunc.verifyPolicyData(await td.policy.dataStorage.call(policyHash), policyHashMapInfo[1].valueOf(), td.accounts[_policyOwnerAccountIdx], null, miscFunc.getIdxHash(_policyRiskPoints), _policyRiskPoints, 0, 0, 0);
@@ -58,12 +51,9 @@ exports.updatePolicy = async (_policyHash, _policyRiskPoints, _adjustorIdx) => {
     // Update the policy
     const tx = await td.policy.updatePolicy(td.aHash[_adjustorIdx], _policyHash, miscFunc.getIdxHash(_policyRiskPoints), _policyRiskPoints, {from: td.accounts[_adjustorIdx]});
     
-    // 2 Events are triggered as part of the policy update
-    expect(_policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 0, 0));
-    expect(_policyRiskPoints).to.be.eql(parseInt(miscFunc.eventLog('Policy', tx, 0, 2)));
-
-    expect(_policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 1, 0));
-    expect(miscFunc.getIdxHash(_policyRiskPoints)).to.be.eql(miscFunc.eventLog('Policy', tx, 1, 2));
+    // 2 Events are triggered as part of the Policy creation
+    miscFunc.verifyPolicyLog(tx, 0, _policyHash, initialPolicyData[1], _policyRiskPoints, null, initialPolicyData[7]);
+    miscFunc.verifyPolicyLog(tx, 1, _policyHash, initialPolicyData[1], miscFunc.getIdxHash(_policyRiskPoints), null, initialPolicyData[7]);
     
     // Get the new total policy risk points
     const newPoints = (await td.policy.totalIssuedPolicyRiskPoints()).valueOf();
@@ -96,9 +86,7 @@ exports.suspendPolicy = async (_policyHash, _policyOwnerAccountIdx) => {
     const tx = await td.policy.suspendPolicy(_policyHash, {from: td.accounts[_policyOwnerAccountIdx]});
     
     // Verify the policy event log
-    expect(_policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 0, 0));
-    expect(td.accounts[_policyOwnerAccountIdx]).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Policy', tx, 0, 1)));
-    expect(0).to.be.eql(parseInt(miscFunc.eventLog('Policy', tx, 0, 4)));
+    miscFunc.verifyPolicyLog(tx, 0, _policyHash, td.accounts[_policyOwnerAccountIdx], miscFunc.getEmptyHash(), null, 0);
 
     // Call the function to verify all policy data
     await miscFunc.verifyPolicyData(await td.policy.dataStorage.call(_policyHash), initialPolicyData[0].valueOf(), initialPolicyData[1], initialPolicyData[2], null, initialPolicyData[4].valueOf(), null, null, 0, td.currentPoolDay, td.currentPoolDay + setupI.MAX_DURATION_POLICY_PAUSED_DAY);
@@ -121,9 +109,7 @@ exports.unsuspendPolicy = async (_policyHash, _policyOwnerAccountIdx) => {
     const tx = await td.policy.unsuspendPolicy(_policyHash, {from: td.accounts[_policyOwnerAccountIdx]});
     
     // Verify the policy event log
-    expect(_policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 0, 0));
-    expect(td.accounts[_policyOwnerAccountIdx]).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Policy', tx, 0, 1)));
-    expect(1).to.be.eql(parseInt(miscFunc.eventLog('Policy', tx, 0, 4)));
+    miscFunc.verifyPolicyLog(tx, 0, _policyHash, td.accounts[_policyOwnerAccountIdx], miscFunc.getEmptyHash(), null, 1);
 
     // Call the function to verify all policy data
     await miscFunc.verifyPolicyData(await td.policy.dataStorage.call(_policyHash), initialPolicyData[0].valueOf(), initialPolicyData[1], initialPolicyData[2], null, initialPolicyData[4].valueOf(), null, null, 1, td.currentPoolDay, null);
@@ -146,9 +132,7 @@ exports.retirePolicy = async (_policyHash, _policyOwnerAccountIdx) => {
     const tx = await td.policy.retirePolicy(_policyHash, {from: td.accounts[_policyOwnerAccountIdx]});
     
     // Verify the policy event log
-    expect(_policyHash).to.be.eql(miscFunc.eventLog('Policy', tx, 0, 0));
-    expect(td.accounts[_policyOwnerAccountIdx]).to.be.eql(miscFunc.getAdrFromBytes32(miscFunc.eventLog('Policy', tx, 0, 1)));
-    expect(4).to.be.eql(parseInt(miscFunc.eventLog('Policy', tx, 0, 4)));
+    miscFunc.verifyPolicyLog(tx, 0, _policyHash, td.accounts[_policyOwnerAccountIdx], miscFunc.getEmptyHash(), null, 4);
 
     // Call the function to verify all policy data
     await miscFunc.verifyPolicyData(await td.policy.dataStorage.call(_policyHash), initialPolicyData[0].valueOf(), initialPolicyData[1], initialPolicyData[2], null, initialPolicyData[4].valueOf(), null, null, 4, td.currentPoolDay, null);

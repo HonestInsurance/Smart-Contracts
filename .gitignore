@@ -1,3 +1,4 @@
-/bin
-/build
-/test/negative-tests
+bin/*
+build/*
+node_modules/*
+test/negative-tests/*

@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "abi-decoder": "^1.1.0",
     "bignumber.js": "^6.0.0",
     "expect.js": "^0.3.1"
   }

@@ -385,9 +385,9 @@ contract('All Insurance Ecosystem Contracts', async (accounts) => {
         // await printLogs.printTrustLogs(null, null, null);
         // await printLogs.printPremiums(7);
         // await printLogs.printBankPaymentAdvice();
-        // await printLogs.printAdjustorLogs(td.aHash[1], null, null);
-        // await printLogs.printSettlementLogs(td.sHash[1], null, null);
-        // await printLogs.printPolicyLogs(td.pHash[1], null, null);
+        // await printLogs.printAdjustorLogs(null, null, null);
+        // await printLogs.printSettlementLogs(null, null, null);
+        // await printLogs.printPolicyLogs(null, null, null);
         // await printLogs.printBondLogs(null, null, null);
         // await printLogs.printPoolLogs(null, null, null);
         // await printLogs.printBankLogs(null, null, null);

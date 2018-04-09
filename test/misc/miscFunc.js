@@ -7,6 +7,7 @@
 
 const expect = require('expect.js');
 const bn = require('bignumber.js');
+const miscFunc = require("../misc/miscFunc.js");
 const setupI = require("../misc/setupI.js");
 const td = require("../misc/testData.js");
 
@@ -107,13 +108,14 @@ exports.formatNr = function(val, isCurrency, length, allignLeft, thousandSeparat
 // function getBondPaymentAccountHashSender(idx) { return web3.sha3('Sam Smith Bond '+ idx + '12-55555-123456-00' + idx); }
 exports.getRandomHash = function() { var d = new Date(); return web3.sha3('Some random string' + d.getMilliseconds()); }
 exports.getEmptyHash = function() { return "0x0000000000000000000000000000000000000000000000000000000000000000"; }
+exports.getEmptyAdr = function() { return "0x0000000000000000000000000000000000000000"; }
 exports.getIdxHash = function(idx) { return web3.sha3('Some random string' + idx); }
-
 
 exports.getAdjustorServiceAgreement = function(idx) { return web3.sha3('Sam Smith Adjustor '+ idx); }
 exports.getSettlementDocument = function (idx) { return web3.sha3('Settlement document '+ idx); }
 exports.getPolicyDocument = function() { return 'Policy 123 Document'; };
 exports.getPolicyDocumentHash = function() { return web3.sha3('Policy 123 Document'); };
+
 
 
 // Calculates the combined and updcoming bond maturity payout amounts for the next 3 days
@@ -137,87 +139,6 @@ exports.getBondMaturityPaymentsAveragePerDay = function() {
     return Math.floor(sum / (setupI.DURATION_TO_BOND_MATURITY_SEC / (3600 * 24)));
 }
 
-// Returns a single requested value from the event log files as specified by the parameters provided
-exports.eventLog = function(contract, tx, logNr, idx) {
-    // POOL
-    // event LogPool(bytes32 indexed subject, uint indexed day, uint indexed value, uint timestamp);
-    // idx                           0                        1                    2          3  
-    if (contract == 'Pool')
-    {
-        if (idx == 0) return tx.receipt.logs[logNr].topics[1];                                      // bytes32 subject
-        if (idx == 1) return parseInt(tx.receipt.logs[logNr].topics[2]);                            // uint day
-        if (idx == 2) return parseInt(tx.receipt.logs[logNr].topics[3]);                            // uint value
-        if (idx == 3) return tx.receipt.logs[logNr].data.slice(2 + 0 * 64, 2 + 1 * 64).valueOf();   // uint timestamp
-    }
-
-    // TRUST
-    // event LogTrust(bytes32 indexed subject, address indexed adr, bytes32 indexed info, uint timestamp);
-    // idx                           0                        1                    2          3  
-    else if (contract == 'Trust')
-    {
-        if (idx == 0) return tx.receipt.logs[logNr].topics[1];                                      // bytes32 subject
-        if (idx == 1) return tx.receipt.logs[logNr].topics[2];                                      // address adr
-        if (idx == 2) return tx.receipt.logs[logNr].topics[3];                                      // bytes32 info
-        if (idx == 3) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 0 * 64, 2 + 1 * 64);      // uint timestamp
-    }
-
-    // BOND and POLICY
-    // event LogBond  (bytes32 indexed bondHash,   address indexed owner, bytes32 indexed info, uint timestamp, uint state);
-    // event LogPolicy(bytes32 indexed policyHash, address indexed owner, bytes32 indexed info, uint timestamp, uint state);
-    // idx                           0                         1                      2          3               4
-    else if ((contract == 'Bond') || (contract == 'Policy'))
-    {    
-        if (idx == 0) return tx.receipt.logs[logNr].topics[1];                                      // bytes32 hash
-        if (idx == 1) return tx.receipt.logs[logNr].topics[2];                                      // address owner
-        if (idx == 2) return tx.receipt.logs[logNr].topics[3]                                       // bytes32 info
-        if (idx == 3) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 0 * 64, 2 + 1 * 64);      // uint timestamp
-        if (idx == 4) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 1 * 64, 2 + 2 * 64);      // uint state        
-    }
-
-    // ADJUSTOR
-    // event LogAdjustor(bytes32 indexed adjustorHash, address indexed owner, bytes32 indexed info, uint timestamp);
-    // idx                               0                             1                      2          3
-    else if (contract == 'Adjustor')
-    {    
-        if (idx == 0) return tx.receipt.logs[logNr].topics[1];                                      // bytes32 adjustorHash
-        if (idx == 1) return tx.receipt.logs[logNr].topics[2];                                      // address owner
-        if (idx == 2) return tx.receipt.logs[logNr].topics[3]                                       // bytes32 info
-        if (idx == 3) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 0 * 64, 2 + 1 * 64);      // uint timestamp        
-    }
-
-    // SETTLEMENT
-    // event LogSettlement(bytes32 indexed settlementHash, bytes32 indexed adjustorHash, bytes32 indexed info, uint timestamp, uint state);
-    // idx                                 0                               1                             2          3               4
-    else if (contract == 'Settlement')
-    {    
-        if (idx == 0) return tx.receipt.logs[logNr].topics[1];                                      // bytes32 settlementHash
-        if (idx == 1) return tx.receipt.logs[logNr].topics[2];                                      // bytes32 adjustorHash
-        if (idx == 2) return tx.receipt.logs[logNr].topics[3]                                       // bytes32 info
-        if (idx == 3) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 0 * 64, 2 + 1 * 64);      // uint timestamp   
-        if (idx == 4) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 1 * 64, 2 + 2 * 64);      // uint state           
-    }
-
-    // BANK TRANSACTION
-    // event LogBank(bytes32 indexed internalReferenceHash, uint indexed accountType, bool indexed success,
-    // idx                                             0                                   1                         2
-    //     bytes32 paymentAccountHash, bytes32 paymentSubject, bytes32 info, 
-    // idx         3                           4                       5
-    //     uint timestamp uint transactionType, uint amount);
-    // idx      6               7                    8
-    else if (contract == 'Bank')
-    {
-        if (idx == 0) return tx.receipt.logs[logNr].topics[1];                                      // bytes32 internalReferenceHash
-        if (idx == 1) return tx.receipt.logs[logNr].topics[2];                                      // uint accountType
-        if (idx == 2) return tx.receipt.logs[logNr].topics[3];                                      // bool success
-        if (idx == 3) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 0 * 64, 2 + 1 * 64);      // bytes32 paymentAccountHash
-        if (idx == 4) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 1 * 64, 2 + 2 * 64);      // string paymentSubject
-        if (idx == 5) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 2 * 64, 2 + 3 * 64);      // bytes32 info
-        if (idx == 6) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 3 * 64, 2 + 4 * 64);      // uint timestamp
-        if (idx == 7) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 4 * 64, 2 + 5 * 64);      // uint transactionType
-        if (idx == 8) return '0x' + tx.receipt.logs[logNr].data.slice(2 + 5 * 64, 2 + 6 * 64);      // uint amount
-    }
-}
-
 // Function verifies all contract addresses specified for any of the dependent contracts
 exports.verifyAllContractReferenceAdr = function(idx, contractAdrMsg, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef) {
     expect(poolAdrRef[idx]).to.be.eql(bondAdrRef[idx]);
@@ -228,6 +149,78 @@ exports.verifyAllContractReferenceAdr = function(idx, contractAdrMsg, poolAdrRef
     expect(poolAdrRef[idx]).to.be.eql(timerAdrRef[idx]);
     expect(poolAdrRef[idx]).to.be.eql(trustAdrRef[idx]);
 }
+
+// Function compares the difference between two hash maps (first, next and count)
+exports.verifyHashMap = function(_beforeHashMap, _afterHashMap, _added)
+{
+    // A new hash has been added to the hash map
+    if (_added == true) {
+        expect(+_beforeHashMap[1].valueOf() + +1).to.be.eql(+_afterHashMap[1].valueOf());
+        expect(+_beforeHashMap[2].valueOf() + +1).to.be.eql(+_afterHashMap[2].valueOf());
+    }
+    // The hash map has not changed
+    else if (_added == null) {
+        expect(_beforeHashMap[1].valueOf()).to.be.eql(+_afterHashMap[1].valueOf());
+        expect(_beforeHashMap[2].valueOf()).to.be.eql(+_afterHashMap[2].valueOf());
+    }
+    // A hash has been 'removed' (archived)
+    else if (_added == false) {
+        expect(_beforeHashMap[1].valueOf()).to.be.eql(+_afterHashMap[1].valueOf());
+        expect(_beforeHashMap[2].valueOf()).to.be.eql(+_afterHashMap[2].valueOf() + +1);
+    }
+}
+
+
+
+// event LogPool(bytes32 indexed subject, uint indexed day, uint indexed value, uint timestamp);
+exports.verifyPoolLog = function(_tx, _idx, _subject, _day, _value, _timestamp)
+{
+    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // If a parameter has been provided verify it matches _data
+    if (_subject != null)               expect(_subject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[0].value).trim());
+    if (_day != null)                   expect(parseInt(_day)).to.be.equal(parseInt(decodedLogs[_idx].events[1].value));
+    if (_value != null)                 expect(parseInt(_value)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+}
+
+// event LogTrust(bytes32 indexed subject, address indexed adr, bytes32 indexed info, uint timestamp);
+exports.verifyTrustLog = function(_tx, _idx, _subject, _adr, _info, _timestamp)
+{
+    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // If a parameter has been provided verify it matches _data
+    if (_subject != null)               expect(_subject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[0].value).trim());
+    if (_adr != null)                   expect(_adr).to.be.equal(decodedLogs[_idx].events[1].value);
+    if (_info != null)                  expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+}
+
+// event LogBank(bytes32 indexed internalReferenceHash, uint indexed accountType, bool indexed success, 
+//               bytes32 paymentAccountHash, bytes32 paymentSubject, bytes32 info, uint timestamp, uint transactionType, uint amount);
+exports.verifyBankLog = function(_tx, _idx, _internalReferenceHash, _accountType, _success, _paymentAccountHash,
+    _paymentSubject, _info, _timestamp, _transactionType, _amount)
+{
+    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // If a parameter has been provided verify it matches _data
+    if (_internalReferenceHash != null) expect(_internalReferenceHash).to.be.equal(decodedLogs[_idx].events[0].value);
+    if (_accountType != null)           expect(parseInt(_accountType)).to.be.equal(parseInt(decodedLogs[_idx].events[1].value));
+    if (_success != null)               expect(_success).to.be.eql(decodedLogs[_idx].events[2].value);
+    if (_paymentAccountHash != null) {
+        if (parseInt(_paymentAccountHash) > (Math.pow(10, 18)))
+            expect(_paymentAccountHash).to.be.equal(decodedLogs[_idx].events[3].value);
+        else expect(parseInt(_paymentAccountHash)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
+    }
+    if (_paymentSubject != null) {
+        if (_paymentSubject == 'Pool')
+            expect(_paymentSubject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[4].value).trim());
+        else expect(_paymentSubject).to.be.equal(decodedLogs[_idx].events[4].value);
+    }
+    if (_info != null)                  expect(_info).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[5].value).trim());
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[6].value));
+    if (_transactionType != null)       expect(parseInt(_transactionType)).to.be.equal(parseInt(decodedLogs[_idx].events[7].value));
+    if (_amount != null)                expect(parseInt(_amount)).to.be.equal(parseInt(decodedLogs[_idx].events[8].value));
+}
+
+
 
 // Function verifies if the data in _data matches the other parameter if they are provided
 exports.verifyBondData = function(_data, _idx, _owner, _paymentAccountHash, _principal_Cu, 
@@ -250,6 +243,26 @@ exports.verifyBondData = function(_data, _idx, _owner, _paymentAccountHash, _pri
     return 0;
 }
 
+// event LogBond(bytes32 indexed bondHash, address indexed owner, bytes32 indexed info, uint timestamp, uint state);
+exports.verifyBondLog = function(_tx, _idx, _bondHash, _owner, _info, _timestamp, _state)
+{
+    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // If a parameter has been provided verify it matches _data
+    if (_bondHash != null)              expect(_bondHash).to.be.equal(decodedLogs[_idx].events[0].value);
+    if (_owner != null)                 expect(_owner).to.be.equal(decodedLogs[_idx].events[1].value);
+    if (_info != null) {
+        if (parseInt(_info) > (Math.pow(10, 18)))
+            expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
+        else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
+    }
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
+    // Return the bondHash stored in the event log
+    return decodedLogs[_idx].events[0].value;
+}
+
+
+
 // Function verifies if the data in _data matches the other parameter if they are provided
 exports.verifyPolicyData = function(_data, _idx, _owner, _paymentAccountHash, _documentHash, 
     _riskPoints, _premiumCredited_Cu, _premiumCharged_Cu_Ppt, _state, _lastReconciliationDay, _nextReconciliationDay) 
@@ -266,6 +279,26 @@ exports.verifyPolicyData = function(_data, _idx, _owner, _paymentAccountHash, _d
     if (_nextReconciliationDay != null)         expect(_data[9].valueOf()).to.be.eql(_nextReconciliationDay);
 }
 
+// event LogPolicy(bytes32 indexed policyHash, address indexed owner, bytes32 indexed info, uint timestamp, uint state);
+exports.verifyPolicyLog = function(_tx, _idx, _policyHash, _owner, _info, _timestamp, _state)
+{
+    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // If a parameter has been provided verify it matches _data
+    if (_policyHash != null)            expect(_policyHash).to.be.equal(decodedLogs[_idx].events[0].value);
+    if (_owner != null)                 expect(_owner).to.be.equal(decodedLogs[_idx].events[1].value);
+    if (_info != null) {
+        if (parseInt(_info) > (Math.pow(10, 18)))
+            expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
+        else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
+    }
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
+    // Return the policyHash stored in the event log
+    return decodedLogs[_idx].events[0].value;
+}
+
+
+
 // Function verifies if the data in _data matches the other parameter if they are provided
 exports.verifyAdjustorData = function(_data, _idx, _owner, _settlementApprovalAmount_Cu, _policyRiskPointLimit, _serviceAgreement) 
 {
@@ -276,6 +309,25 @@ exports.verifyAdjustorData = function(_data, _idx, _owner, _settlementApprovalAm
     if (_serviceAgreement != null)              expect(_data[4].valueOf()).to.be.eql(_serviceAgreement);
 }
 
+// event LogAdjustor(bytes32 indexed adjustorHash, address indexed owner, bytes32 indexed info, uint timestamp);
+exports.verifyAdjustorLog = function(_tx, _idx, _adjustorHash, _owner, _info, _timestamp)
+{
+    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // If a parameter has been provided verify it matches _data
+    if (_adjustorHash != null)          expect(_adjustorHash).to.be.equal(decodedLogs[_idx].events[0].value);
+    if (_owner != null)                 expect(_owner).to.be.equal(decodedLogs[_idx].events[1].value);
+    if (_info != null) {
+        if (parseInt(_info) > (Math.pow(10, 18)))
+            expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
+        else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
+    }
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    // Return the policyHash stored in the event log
+    return decodedLogs[_idx].events[0].value;
+}
+
+
+
 // Function verifies if the data in _data matches the other parameter if they are provided
 exports.verifySettlementData = function(_data, _idx, _settlementAmount_Cu, _state) 
 {
@@ -284,22 +336,16 @@ exports.verifySettlementData = function(_data, _idx, _settlementAmount_Cu, _stat
     if (_state != null)                         expect(_data[2].valueOf()).to.be.eql(_state);
 }
 
-// Function compares the difference between two hash maps (first, next and count)
-exports.verifyHashMap = function(_beforeHashMap, _afterHashMap, _added)
+// event LogSettlement(bytes32 indexed settlementHash, bytes32 indexed adjustorHash, bytes32 indexed info, uint timestamp, uint state);
+exports.verifySettlementLog = function(_tx, _idx, _settlementHash, _adjustorHash, _info, _timestamp, _state)
 {
-    // A new hash has been added to the hash map
-    if (_added == true) {
-        expect(+_beforeHashMap[1].valueOf() + +1).to.be.eql(+_afterHashMap[1].valueOf());
-        expect(+_beforeHashMap[2].valueOf() + +1).to.be.eql(+_afterHashMap[2].valueOf());
-    }
-    // The hash map has not changed
-    else if (_added == null) {
-        expect(_beforeHashMap[1].valueOf()).to.be.eql(+_afterHashMap[1].valueOf());
-        expect(_beforeHashMap[2].valueOf()).to.be.eql(+_afterHashMap[2].valueOf());
-    }
-    // A hash has been 'removed' (archived)
-    else if (_added == false) {
-        expect(_beforeHashMap[1].valueOf()).to.be.eql(+_afterHashMap[1].valueOf());
-        expect(_beforeHashMap[2].valueOf()).to.be.eql(+_afterHashMap[2].valueOf() + +1);
-    }
+    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // If a parameter has been provided verify it matches _data
+    if (_settlementHash != null)        expect(_settlementHash).to.be.equal(decodedLogs[_idx].events[0].value);
+    if (_adjustorHash != null)          expect(_adjustorHash).to.be.equal(decodedLogs[_idx].events[1].value);
+    if (_info != null)                  expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
+    // Return the settlementHash stored in the event log
+    return decodedLogs[_idx].events[0].value;
 }
