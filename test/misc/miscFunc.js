@@ -180,7 +180,7 @@ exports.verifyPoolLog = function(_tx, _idx, _subject, _day, _value, _timestamp)
     if (_subject != null)               expect(_subject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[0].value).trim());
     if (_day != null)                   expect(parseInt(_day)).to.be.equal(parseInt(decodedLogs[_idx].events[1].value));
     if (_value != null)                 expect(parseInt(_value)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
 }
 
 // event LogTrust(bytes32 indexed subject, address indexed adr, bytes32 indexed info, uint timestamp);
@@ -191,7 +191,7 @@ exports.verifyTrustLog = function(_tx, _idx, _subject, _adr, _info, _timestamp)
     if (_subject != null)               expect(_subject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[0].value).trim());
     if (_adr != null)                   expect(_adr).to.be.equal(decodedLogs[_idx].events[1].value);
     if (_info != null)                  expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
 }
 
 // event LogBank(bytes32 indexed internalReferenceHash, uint indexed accountType, bool indexed success, 
@@ -215,7 +215,7 @@ exports.verifyBankLog = function(_tx, _idx, _internalReferenceHash, _accountType
         else expect(_paymentSubject).to.be.equal(decodedLogs[_idx].events[4].value);
     }
     if (_info != null)                  expect(_info).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[5].value).trim());
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[6].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[6].value));
     if (_transactionType != null)       expect(parseInt(_transactionType)).to.be.equal(parseInt(decodedLogs[_idx].events[7].value));
     if (_amount != null)                expect(parseInt(_amount)).to.be.equal(parseInt(decodedLogs[_idx].events[8].value));
 }
@@ -255,7 +255,7 @@ exports.verifyBondLog = function(_tx, _idx, _bondHash, _owner, _info, _timestamp
             expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
         else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
     }
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
     if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
     // Return the bondHash stored in the event log
     return decodedLogs[_idx].events[0].value;
@@ -291,7 +291,7 @@ exports.verifyPolicyLog = function(_tx, _idx, _policyHash, _owner, _info, _times
             expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
         else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
     }
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
     if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
     // Return the policyHash stored in the event log
     return decodedLogs[_idx].events[0].value;
@@ -321,7 +321,7 @@ exports.verifyAdjustorLog = function(_tx, _idx, _adjustorHash, _owner, _info, _t
             expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
         else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
     }
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
     // Return the policyHash stored in the event log
     return decodedLogs[_idx].events[0].value;
 }
@@ -344,7 +344,7 @@ exports.verifySettlementLog = function(_tx, _idx, _settlementHash, _adjustorHash
     if (_settlementHash != null)        expect(_settlementHash).to.be.equal(decodedLogs[_idx].events[0].value);
     if (_adjustorHash != null)          expect(_adjustorHash).to.be.equal(decodedLogs[_idx].events[1].value);
     if (_info != null)                  expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.eql(parseInt(decodedLogs[_idx].events[3].value));
+    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
     if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
     // Return the settlementHash stored in the event log
     return decodedLogs[_idx].events[0].value;
