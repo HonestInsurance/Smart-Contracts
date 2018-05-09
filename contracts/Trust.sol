@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 import "./Pool.sol";
 import "./IntAccessI.sol";
@@ -21,7 +21,7 @@ contract Trust is IntAccessI, ExtAccessI {
 
     /**@dev Constructor of the Trust.
      */
-    function Trust() IntAccessI(msg.sender) ExtAccessI(msg.sender) public {
+    constructor() IntAccessI(msg.sender) ExtAccessI(msg.sender) public {
         // Add log entry
         emit LogTrust(bytes32("TrustContractCreation"), address(this), 0x0, now);
     }

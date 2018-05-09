@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 
 /** @title Default migrations contract used by truffle.*/
@@ -19,7 +19,7 @@ contract Migrations {
             _;
     }
 
-    function Migrations() public {
+    constructor() public {
         owner = msg.sender;
     }
 

@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 import "./Lib.sol";
 import "./SetupI.sol";
@@ -38,7 +38,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
     /**@dev Constructor of the  Adjustor.
      * @param _trustAdr The address of the Trust.
      */
-    function Adjustor(address _trustAdr) IntAccessI(_trustAdr) public {
+    constructor(address _trustAdr) IntAccessI(_trustAdr) public {
     }
 
     /**@dev Creates an new adjustor with the requested details - can only be called by the Trust
@@ -92,7 +92,13 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
      * @param _policyRiskPointLimit The risk point limit this adjustor is authorised to underwrite policies
      * @param _serviceAgreementHash The hash of the new service agreement
      */
-    function updateAdjustor(bytes32 _adjustorHash, address _owner, uint _settlementApprovalAmount_Cu, uint _policyRiskPointLimit, bytes32 _serviceAgreementHash)
+    function updateAdjustor(
+        bytes32 _adjustorHash, 
+        address _owner, 
+        uint _settlementApprovalAmount_Cu, 
+        uint _policyRiskPointLimit, 
+        bytes32 _serviceAgreementHash
+        )
         public
         isTrustAuth
     {

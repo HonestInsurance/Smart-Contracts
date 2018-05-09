@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -58,7 +58,7 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
     /**@dev Constructor of the Bond.
      * @param _trustAdr The address of the Trust.
      */
-    function Bond(address _trustAdr) IntAccessI(_trustAdr) public {
+    constructor(address _trustAdr) IntAccessI(_trustAdr) public {
     }
 
     /**@dev Creates an new bond with the requested principal amount in a created state. The transaction (msg.sender) must be an externally owned account (not a contract address)
