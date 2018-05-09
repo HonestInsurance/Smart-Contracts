@@ -302,14 +302,6 @@ This insurance model and its corresponding smart contracts are written in the So
 
 -----------------------
 
-## A note about this code base
-
-The source code of the function `dailyOvernightProcessing()` in the **pool contract** has been removed from this code base and will be made public at a later stage. The reasoning for this caution is that this model's applicability and resilience needs to be simulated for the different insurance sectors (health, property, life, indemnity, etc.) first so that the correct set of Initialization Constants (all 26 of them - see contract `SetupI.sol` file) can be chosen wisely.
-
-It is the perfect match of these configuration parameters and the model that will hopefully provide us with a fair, transparent and resilient insurance service. Given the state the Blockchain ecosystem is in right now, I fear that this model could be applied in a rush without having a solid understanding of an insurance use case (creating a significant risk of harming the entire p-to-p insurance ecosystem if one pool ends up going 'belly up').
-
------------------------
-
 ## License
 
 GPL-3.0
