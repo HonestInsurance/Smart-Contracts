@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 import "./IntAccessI.sol";
 import "./NotificationI.sol";
@@ -34,7 +34,7 @@ contract Timer is IntAccessI {
     /**@dev Constructor of the  Timer.
      * @param _trustAdr The address of the Trust this timer belongs to
      */
-    function Timer(address _trustAdr) IntAccessI(_trustAdr) public {
+    constructor(address _trustAdr) IntAccessI(_trustAdr) public {
         TIMER_INCEPTION_DATE = now;
     }
 

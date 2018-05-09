@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 
 /** @title Interface contract managing external access keys for authorisation and authentication.*/
@@ -27,7 +27,7 @@ contract ExtAccessI {
     * @dev Constructor for ExtAccessI.
     * @param _adr Address to add as the first key.
     */
-    function ExtAccessI(address _adr) public {
+    constructor(address _adr) public {
         // Verify a valid address has been provided
         require(_adr != address(0x0));
         // Add the address provided to the authorised keys

@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -64,7 +64,7 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
     /**@dev Constructor of the  Bond.
      * @param _trustAdr The address of the Trust.
      */
-    function Policy(address _trustAdr) IntAccessI(_trustAdr) public {
+    constructor(address _trustAdr) IntAccessI(_trustAdr) public {
     }
 
     /**

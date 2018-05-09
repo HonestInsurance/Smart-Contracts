@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -41,7 +41,7 @@ contract Bank is IntAccessI, ExtAccessI {
     /**@dev Constructor of the Bank.
      * @param _trustAdr The address of the Trust.
      */
-    function Bank(address _trustAdr) IntAccessI(_trustAdr) ExtAccessI(msg.sender) public {
+    constructor(address _trustAdr) IntAccessI(_trustAdr) ExtAccessI(msg.sender) public {
     }
 
     /**@dev Resets the fundingAccountPaymentsTracking_Cu varialbe to 0

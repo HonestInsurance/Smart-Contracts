@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 
 /** @title Is used by contracts that receive function calls to be authorised from other contract transactions.*/
@@ -25,7 +25,7 @@ contract IntAccessI {
     * @dev Constructor for IntAccessI.
     * @param _trustAdr Address of the trust contract
     */
-    function IntAccessI(address _trustAdr) public {
+    constructor(address _trustAdr) public {
         // Verify a valid deployment controller address
         require(_trustAdr != address(0x0));
         // Save the deployment controller's address

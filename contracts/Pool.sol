@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.23;
 
 import "./Lib.sol";
 import "./IntAccessI.sol";
@@ -53,7 +53,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
     /**@dev Constructor of the Pool.
      * @param _trustAdr The address of the Trust contract.
      */
-    function Pool(address _trustAdr) IntAccessI(_trustAdr) public {
+    constructor(address _trustAdr) IntAccessI(_trustAdr) public {
     }
 
     /**@dev Function initialises the pool relevant data - can only be called by the Trust
@@ -96,12 +96,197 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         private
         returns (uint)
     {
-        // *****************************************************
-        // This code base has been removed and will be published at a later stage.
-        // See release notes for further details.
-        // *****************************************************
+        // ********************************************************************************
+        // *** (1) Set yesterdayPoolDay as the currentPoolDay and increase current day
+        // ********************************************************************************
+
+        uint yesterdayPoolDay = currentPoolDay;
+        // Current pool day is the NEW day at 12am (midnight)
         currentPoolDay++;
-        return 0;
+        
+
+        // ********************************************************************************
+        // *** (2) BANK PAYMENTS - yesterday's total premium and overflow payment
+        // ********************************************************************************
+
+        uint bondMaturityPayoutAmountNext3Days_Cu = 0;
+        uint bondMaturityPayoutFuturePerDay_Cu = 0;
+
+        // Retrieve the payout amounts from the bond contract
+        (bondMaturityPayoutAmountNext3Days_Cu, bondMaturityPayoutFuturePerDay_Cu) = 
+            Bond(getBondAdr()).getBondMaturityPayouts(currentPoolDay, currentPoolDay + (DURATION_TO_BOND_MATURITY_SEC / 1 days));
+
+        // Get the total number of policy risk points
+        uint totalPolicyRiskPoints = Policy(getPolicyAdr()).totalIssuedPolicyRiskPoints();
+
+        // Add log entry
+        emit LogPool(bytes32("TotalRiskPoints"), yesterdayPoolDay, totalPolicyRiskPoints, now);
+
+        // *** Calculate total premium to be paid by all policy holders for yesterday;
+        uint totalPremiumYesterday_Cu = 
+            (totalPolicyRiskPoints * Policy(getPolicyAdr()).premiumPerRiskPoint_Cu_Ppm(yesterdayPoolDay, 0)) / (10**6);
+
+        // Create payment advice
+        if (totalPremiumYesterday_Cu > 0) {
+            // Create payment advice for the premium payment
+            Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Premium, BOND_ACCOUNT_PAYMENT_HASH, 
+                bytes32(yesterdayPoolDay), totalPremiumYesterday_Cu, bytes32(getPoolAdr()));
+            
+            // Adjust WC_Bal_PA_Cu
+            WC_Bal_PA_Cu -= totalPremiumYesterday_Cu;
+        
+            // Calculate the amounts to pay for safety net and pool operators
+            uint paymentTrust = (totalPremiumYesterday_Cu * TRUST_FEE_PPT) / 10**3;
+            uint paymentPoolOperators = (totalPremiumYesterday_Cu * POOL_OPERATOR_FEE_PPT) / 10**3;
+
+            // Create payment advice for the trust if amount is greater than 1 cu
+            if (paymentTrust >= 1) {
+                // Create payment advice for trust
+                Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Trust, TRUST_ACCOUNT_PAYMENT_HASH, 
+                    bytes32(yesterdayPoolDay), paymentTrust, bytes32(getPoolAdr()));
+                // Adjust WC_Bal_FA_Cu
+                WC_Bal_FA_Cu -= paymentTrust;
+            }
+
+            // Create payment advice for pool operators if amount is greater than 1 cu
+            if (paymentPoolOperators >= 1) {
+                // Create payment advice for the pool operators
+                Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.PoolOperator, OPERATOR_ACCOUNT_PAYMENT_HASH, 
+                    bytes32(yesterdayPoolDay), paymentPoolOperators, bytes32(getPoolAdr()));
+                // Adjust WC_Bal_FA_Cu
+                WC_Bal_FA_Cu -= paymentPoolOperators;
+            }
+        }
+        // Add log entries
+        emit LogPool(bytes32("PremiumCu"), yesterdayPoolDay, totalPremiumYesterday_Cu, now);
+
+        // If the amount held in the Bond Account exceeds 5 times bondMaturityPayoutFuturePerDay_Cu balance create an OVERFLOW PAYMENT advice
+        if (WC_Bal_BA_Cu > 5 * bondMaturityPayoutFuturePerDay_Cu) {
+            // Calculate the overflow amount
+            uint overflowAmount_Cu = WC_Bal_BA_Cu - (5 * bondMaturityPayoutFuturePerDay_Cu);
+            // Create payment advice for funds being sent to the Funding Account
+            Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Overflow, FUNDING_ACCOUNT_PAYMENT_HASH, 
+                bytes32(yesterdayPoolDay), overflowAmount_Cu, bytes32(getPoolAdr()));
+            // Adjust WC_Bal_BA_Cu
+            WC_Bal_BA_Cu -= overflowAmount_Cu;
+            // Add log entries
+            emit LogPool(bytes32("OverflowCu"), yesterdayPoolDay, overflowAmount_Cu, now);
+        }
+
+        // ********************************************************************************
+        // *** (3) RECALCULATION of today's insurance pool variables (IP Yield, IP Gradient, WC_BOND, WC_DELTA)
+        // ********************************************************************************
+
+        // Get the expense forecast for the new day
+        if (overwriteWcExpenses == false) {
+            // Get the total expenses of the pool for yesterday from the bank and update WC_Exp_Cu
+            WC_Exp_Cu = ((WC_Exp_Cu * (DURATION_WC_EXPENSE_HISTORY_DAYS - 1)) / DURATION_WC_EXPENSE_HISTORY_DAYS) + 
+                Bank(getBankAdr()).getResetFundingAccountPaymentsTracking();
+        } else {
+            // To reset the bank payments tracking call the function but ignore the return value
+            Bank(getBankAdr()).getResetFundingAccountPaymentsTracking();
+            // Set overwriteWcExpenses to false to enable 'regular' processing for next day
+            overwriteWcExpenses = false;
+        }
+
+        // Calculation of WC_Time in seconds for how long is the WC_Bal sufficient to fund insurance expenses
+        // WC_Time can be negative
+        int WC_Time = 0;
+        // Verify if WC Expenses is greater than 0
+        if (WC_Exp_Cu > 0)
+            WC_Time = (int(WC_Bal_FA_Cu - WC_Locked_Cu) * int(DURATION_WC_EXPENSE_HISTORY_DAYS * 86400)) / int(WC_Exp_Cu);
+        
+        // Calculation of WC_Delta_Cu (The demand of new liquidity in Local Currency e.g. $)
+        // WC_Delta_Cu can be negative
+        int WC_Delta_Cu = ((int(WC_POOL_TARGET_TIME_SEC) - WC_Time) * int(WC_Exp_Cu)) / int(DURATION_WC_EXPENSE_HISTORY_DAYS * 86400);
+        
+        // Calculation of the amount that should be issued as bonds taking TRANSIT money into account
+        // If the calculated Bond value is negative set it to 0
+        if (WC_Delta_Cu - int(WC_Transit_Cu) > 0)
+            WC_Bond_Cu = uint(WC_Delta_Cu) - WC_Transit_Cu;
+        else 
+            WC_Bond_Cu = 0;
+
+        // Calculation of Yield - Yield must always be at least the minimum yield as defined by the pool
+        if (B_Yield_Ppb < MIN_YIELD_PPB)
+            B_Yield_Ppb = MIN_YIELD_PPB;
+
+        // Calculation of the Gradient if Bond is greater than 0;
+        if (WC_Bond_Cu > 0)
+            B_Gradient_Ppq = uint((B_Yield_Ppb * uint(10**6)) / uint(WC_Bond_Cu));
+        else 
+            B_Gradient_Ppq = 0;
+
+        // Calculate the yield accelleration threshold
+        bondYieldAccelerationThreshold = (WC_Bond_Cu * YAC_EXPENSE_THRESHOLD_PPT) / 10**3;
+
+        // If yield accelleration has been deactivated
+        if (bondYieldAccellerationScheduled == false) {
+            // Activate the bond yield accelleration and set the flag to true
+            bondYieldAccellerationScheduled = true;
+            // Schedule the Yield Acceleration to start in 1 minute (60 seconds)
+            Timer(getTimerAdr()).addNotification(
+                now + 60, 
+                uint8(NotificationSubject.BondYieldAcceleration), bytes32(0x0), address(0x0));
+        }
+
+        // Add log entries
+        emit LogPool(bytes32("WcExpenseForecastCu"), currentPoolDay, WC_Exp_Cu, now);
+        emit LogPool(bytes32("WcBondCu"), currentPoolDay, WC_Bond_Cu, now);
+        emit LogPool(bytes32("BondGradientPpq"), currentPoolDay, B_Gradient_Ppq, now);
+        emit LogPool(bytes32("BondYieldPpb"), currentPoolDay, B_Yield_Ppb, now);
+
+
+        // ********************************************************************************
+        // *** CALCULATION of todays's insurance PREMIUM PER RISK POINT
+        // ********************************************************************************
+
+        // Today's total premium to be charged
+        uint totalPremiumTargetToday_Cu = bondMaturityPayoutFuturePerDay_Cu;
+        
+        // Check if [required delta amount to cover bond payouts over next 3 days] is greater then [average bond maturity payout amount (that would be charged by default)]
+        if (bondMaturityPayoutAmountNext3Days_Cu > WC_Bal_BA_Cu + totalPremiumYesterday_Cu) {
+            // Check if the required demand for topping up is greater than the default bond Maturity payout future per day value
+            if (bondMaturityPayoutAmountNext3Days_Cu - WC_Bal_BA_Cu - totalPremiumYesterday_Cu > bondMaturityPayoutFuturePerDay_Cu)
+                totalPremiumTargetToday_Cu = bondMaturityPayoutAmountNext3Days_Cu - WC_Bal_BA_Cu - totalPremiumYesterday_Cu;
+        }
+
+        // Calculate the premium per risk point in Cu Ppm if policies with risk points exist
+        Policy(getPolicyAdr()).setPremiumPerRiskPoint(
+            (totalPolicyRiskPoints > 0 ? (totalPremiumTargetToday_Cu * (10**6))/totalPolicyRiskPoints : 0), 
+            currentPoolDay
+        );
+
+        // Add log entries
+        emit LogPool(bytes32("BondPayoutNext3DaysCu"), currentPoolDay, bondMaturityPayoutAmountNext3Days_Cu, now);
+        emit LogPool(bytes32("BondPayoutFutureCu"), currentPoolDay, bondMaturityPayoutFuturePerDay_Cu, now);
+        emit LogPool(bytes32("PremiumPerRiskPointPpm"), currentPoolDay, Policy(getPolicyAdr()).premiumPerRiskPoint_Cu_Ppm(currentPoolDay, 0), now);
+
+        // ********************************************************************************
+        // *** Book the timer notification for the first batch of policy processing
+        // ********************************************************************************
+
+        // Book a new timer notification to process the first batch of policies in 5 min from now if required
+        uint firstIdx = 0;
+        (firstIdx,) = Policy(getPolicyAdr()).hashMap();
+        // Schedule the first batch of policy processing
+        Timer(getTimerAdr()).addNotification(now + 300, uint8(0), bytes32(firstIdx), Policy(getPolicyAdr()));
+
+        // ********************************************************************************
+        // *** Return the time when the next processing needs to occur
+        // ********************************************************************************
+
+        if (daylightSavingScheduled == false) {
+            // return the next event notification to be scheduled in 1 day (==> 86.400 seconds <=> 24 * 3600 seconds)
+            return 1 days;
+        } else {
+            // Set the Daylight saving adjustment flag to false
+            daylightSavingScheduled = false;
+            // Change the summer/winter time flag
+            isWinterTime = (isWinterTime == true ? false : true);
+            // return the next processing with the adjustoment of the next processing
+            return uint(1 days + (isWinterTime == false ? int(POOL_DAYLIGHT_SAVING_ADJUSTMENT_SEC) * -1 : int(POOL_DAYLIGHT_SAVING_ADJUSTMENT_SEC)));
+        }
     }
 
     /**@dev Function is called by the bond contract to submit a bond for signing
