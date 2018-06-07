@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -96,7 +96,7 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         // *************************************
 
 		// Create a new Bond hash by using random input parameters (Timestamp, nextIdx of the BondHashMapping, address of bond contract and owner address)
-        bytes32 bondHash = keccak256(hashMap.nextIdx, address(this), msg.sender);
+        bytes32 bondHash = keccak256(abi.encodePacked(hashMap.nextIdx, address(this), msg.sender));
 
         // Add the bond data to the data storage
         dataStorage[bondHash] = BondData({

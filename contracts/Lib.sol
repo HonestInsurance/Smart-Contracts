@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 
 /** @title Library functions used by contracts within this ecosystem.*/

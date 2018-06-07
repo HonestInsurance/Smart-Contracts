@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -92,7 +92,7 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
         require(_riskPoints > 0);
 
         // Create a new Policy hash by using random input parameters (Timestamp, nextIdx of the PolicyHashMapping)
-        bytes32 policyHash = keccak256(now, hashMap.nextIdx, address(this), _owner);
+        bytes32 policyHash = keccak256(abi.encodePacked(hashMap.nextIdx, address(this), _owner));
 
         // Add the policy data to the data storage
         dataStorage[policyHash] = PolicyData({

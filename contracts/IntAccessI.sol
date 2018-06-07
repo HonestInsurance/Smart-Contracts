@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 
 /** @title Is used by contracts that receive function calls to be authorised from other contract transactions.*/
