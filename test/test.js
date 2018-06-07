@@ -17,7 +17,6 @@ const utTrust = require("./unit-tests/trust.js");
 const utBank = require("./unit-tests/bank.js");
 const utBond = require("./unit-tests/bond.js");
 const utPolicy = require("./unit-tests/policy.js");
-const ngtBond = require("./negative-tests/negBond.js");
 
 
 contract('All Insurance Ecosystem Contracts', async (accounts) => {

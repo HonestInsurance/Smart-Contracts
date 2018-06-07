@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "./Lib.sol";
 import "./SetupI.sol";
@@ -66,7 +66,7 @@ contract Settlement is SetupI, IntAccessI, HashMapI {
         // *** Create the Settlement
 
 		// Create a new Settlement hash by using random input parameters (Timestamp, nextIdx of the SettlementHashMapping)
-        bytes32 settlementHash = keccak256(hashMap.nextIdx, msg.sender, now);
+        bytes32 settlementHash = keccak256(abi.encodePacked(hashMap.nextIdx, address(this), msg.sender));
 
         // Add the settlement data to the data storage
         dataStorage[settlementHash] = SettlementData({

@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "./Lib.sol";
 import "./SetupI.sol";
@@ -60,7 +60,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         require(_serviceAgreementHash != 0x0);
 
 		// Create a new Adjustor hash by using random input parameters
-        bytes32 adjustorHash = keccak256(hashMap.nextIdx, address(this), _owner);
+        bytes32 adjustorHash = keccak256(abi.encodePacked(hashMap.nextIdx, address(this), _owner));
 
         // Add the adjustor data to the data storage
         dataStorage[adjustorHash] = AdjustorData({

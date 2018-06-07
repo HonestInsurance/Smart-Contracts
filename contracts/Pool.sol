@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.23;
+pragma solidity ^0.4.24;
 
 import "./Lib.sol";
 import "./IntAccessI.sol";
@@ -267,8 +267,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         // ********************************************************************************
 
         // Book a new timer notification to process the first batch of policies in 5 min from now if required
-        uint firstIdx = 0;
-        (firstIdx,) = Policy(getPolicyAdr()).hashMap();
+        (uint firstIdx,,) = Policy(getPolicyAdr()).hashMap();
         // Schedule the first batch of policy processing
         Timer(getTimerAdr()).addNotification(now + 300, uint8(0), bytes32(firstIdx), Policy(getPolicyAdr()));
 
