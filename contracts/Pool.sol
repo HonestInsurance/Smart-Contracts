@@ -42,8 +42,8 @@ contract Pool is SetupI, IntAccessI, NotificationI {
     uint public B_Yield_Ppb = MIN_YIELD_PPB;
     uint public B_Gradient_Ppq = 0;
 
-    // Flag to indicate if the bond yield accelleration is operational (and scheduled by the timer)
-    bool public bondYieldAccellerationScheduled = false;
+    // Flag to indicate if the bond yield acceleration is operational (and scheduled by the timer)
+    bool public bondYieldAccelerationScheduled = false;
     uint public bondYieldAccelerationThreshold = 0;
 
     // Events broadcasted by the Pool / Log events
@@ -217,13 +217,13 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         else 
             B_Gradient_Ppq = 0;
 
-        // Calculate the yield accelleration threshold
+        // Calculate the yield acceleration threshold
         bondYieldAccelerationThreshold = (WC_Bond_Cu * YAC_EXPENSE_THRESHOLD_PPT) / 10**3;
 
-        // If yield accelleration has been deactivated
-        if (bondYieldAccellerationScheduled == false) {
-            // Activate the bond yield accelleration and set the flag to true
-            bondYieldAccellerationScheduled = true;
+        // If yield acceleration has been deactivated
+        if (bondYieldAccelerationScheduled == false) {
+            // Activate the bond yield acceleration and set the flag to true
+            bondYieldAccelerationScheduled = true;
             // Schedule the Yield Acceleration to start in 1 minute (60 seconds)
             Timer(getTimerAdr()).addNotification(
                 now + 60, 
@@ -440,17 +440,17 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             if (B_Yield_Ppb > MAX_YIELD_PPB) {
                 // Set the yield to the max yield
                 B_Yield_Ppb = MAX_YIELD_PPB;
-                // Set the bond yield accelleration flag to false
-                bondYieldAccellerationScheduled = false;
-                // Return 0 to not re-schedule the yield accelleration
+                // Set the bond yield acceleration flag to false
+                bondYieldAccelerationScheduled = false;
+                // Return 0 to not re-schedule the yield acceleration
                 return uint(0);
             }
             // Schedule the next acceleration of the Yield
             return YAC_INTERVAL_DURATION_SEC;
         } else {
-            // Set the bond yield accelleration flag to false
-            bondYieldAccellerationScheduled = false;
-            // Return 0 to not re-schedule the yield accelleration
+            // Set the bond yield acceleration flag to false
+            bondYieldAccelerationScheduled = false;
+            // Return 0 to not re-schedule the yield acceleration
             return uint(0);
         }
     }
