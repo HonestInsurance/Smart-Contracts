@@ -2,3 +2,7 @@ bin/*
 build/*
 node_modules/*
 test/negative-tests/*
+
+# VIM
+*.swo
+*.swp
