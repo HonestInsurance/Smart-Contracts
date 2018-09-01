@@ -51,9 +51,7 @@ contract('HashMapI', async (accounts) => {
         // Get the hashMap details of first index, next index and count of active entries
         const info = await hashMapITest.hashMap();
         // Check if first, next and count are correct
-        expect(firstIdx).to.be.eql(info[0].valueOf());
-        expect(nextIdx).to.be.eql(info[1].valueOf());
-        expect(count).to.be.eql(info[2].valueOf());
+        expect([firstIdx, nextIdx, count]).to.be.eql(info.map(x => x.valueOf()));
 
         // Verify the first 10 entries in the hash map
         for (let i=1; i<=10; i++)
