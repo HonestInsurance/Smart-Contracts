@@ -168,7 +168,24 @@ Settlement Hash: 0xd361db77a4531d375bf7107ab03dbdea239bb5e12f3b85b5d8d49a6d9bdee
 
 -----------------------
 
-## Test Execution
+## Contributing
+
+Pull requests are welcome <3.
+Please run the tests before submitting your diff.
+
+### Setup
+
+```sh
+# Clone this repository
+git clone git@github.com:HonestInsurance/Smart-Contracts.git
+cd Smart-Contracts
+# Install truffle
+npm install -g truffle
+# Install dependencies
+npm install
+```
+
+### Test Execution
 
 The output of running the `test.js` test script is presented below. Due to the number of asserts (checks) performed (about 2,300) in the 69 unit-test below the entire test script requires about 40 seconds to complete (hardware used is latest model of MacBook Pro).
 
