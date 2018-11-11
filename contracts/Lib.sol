@@ -76,11 +76,19 @@ library Lib {
     }
     
     /**
+     * @dev Enum to store the states of HashMapping entries
+     */
+     enum HashState {
+         /*0*/ Invalid,
+         /*1*/ Active,
+         /*2*/ Archived
+     }
+
+    /**
     * @dev Efficient storage container for active and archived hashes enabling iteration
     */
 	struct HashMappping {
-        mapping(bytes32 => bool) hashActive;
-        mapping(bytes32 => bool) hashArchive;
+        mapping(bytes32 => HashState) hashState;
         mapping(uint => bytes32) itHashMap;
         uint firstIdx;
         uint nextIdx;
@@ -93,10 +101,10 @@ library Lib {
     * @param _hash Hash to add to the struct
     */
     function add(HashMappping storage self, bytes32 _hash) public {
-        // Ensure that the hash has not been previously already been added to the active or archived list
-        assert((self.hashActive[_hash] == false) && (self.hashArchive[_hash] == false));
-        // Activate the hash (set it to true)
-        self.hashActive[_hash] = true;
+        // Ensure that the hash has not been previously already been added (is still in an invalid state)
+        assert(self.hashState[_hash] == HashState.Invalid);
+        // Set the state of hash to Active
+        self.hashState[_hash] = HashState.Active;
         // Index the hash with the next idx
         self.itHashMap[self.nextIdx] = _hash;
         self.nextIdx++;
@@ -109,23 +117,21 @@ library Lib {
     * @param _hash Hash to archive in the struct
     */
     function archive(HashMappping storage self, bytes32 _hash) public {
-        // Ensure that the hash is active
-        assert(self.hashActive[_hash] == true);
-        // 'Remove' _hash from the valid hashes
-        self.hashActive[_hash] = false;
-        // Add the hash to the archive
-        self.hashArchive[_hash] = true;
+        // Ensure that the state of the hash is active
+        assert(self.hashState[_hash] == HashState.Active);
+        // Set the State of hash to Archived
+        self.hashState[_hash] = HashState.Archived;
         // Reduce the size of the number of active hashes
         self.count--;
 
         // Check if the first hash in the active list is in an archived state
-        if (self.hashArchive[self.itHashMap[self.firstIdx]] == true) {
+        if (self.hashState[self.itHashMap[self.firstIdx]] == HashState.Archived) {
             self.firstIdx++;
         }
 
         // Repeat one more time to allowing for 'catch up' of firstIdx;
         // Check if the first hash in the active list is still active or has it already been archived
-        if (self.hashArchive[self.itHashMap[self.firstIdx]] == true) {
+        if (self.hashState[self.itHashMap[self.firstIdx]] == HashState.Archived) {
             self.firstIdx++;
         }
     }
@@ -137,7 +143,7 @@ library Lib {
     * @return Indicates if the hash is active (and part of the mapping)
     */
     function isActive(HashMappping storage self, bytes32 _hash) public view returns (bool) {
-        return self.hashActive[_hash];
+        return self.hashState[_hash] == HashState.Active;
     }
 
     /**
@@ -147,7 +153,7 @@ library Lib {
     * @return Indicates if the hash is archived (and part of the mapping)
     */
     function isArchived(HashMappping storage self, bytes32 _hash) public view returns (bool) {
-        return self.hashArchive[_hash];
+        return self.hashState[_hash] == HashState.Archived;
     }
 
     /**
@@ -157,7 +163,7 @@ library Lib {
     * @return Indicates if the hash is either active or archived (part of the mapping)
     */
     function isValid(HashMappping storage self, bytes32 _hash) public view returns (bool) {
-        return (self.hashActive[_hash] || self.hashArchive[_hash]);
+        return self.hashState[_hash] != HashState.Invalid;
     }
 
     /**
