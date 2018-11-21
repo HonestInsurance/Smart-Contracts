@@ -70,25 +70,25 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         isNotContractAdr(msg.sender)
     {
         // Ensure bond principal is in between the min and max boundaries
-        require(_principal_Cu >= MIN_BOND_PRINCIPAL_CU);
-        require(_principal_Cu <= MAX_BOND_PRINCIPAL_CU);
+        require(_principal_Cu >= MIN_BOND_PRINCIPAL_CU, "Bond principal too low");
+        require(_principal_Cu <= MAX_BOND_PRINCIPAL_CU, "Bond principal too high");
 
         // Ensure sufficient IPBs are avaialble for the new bond (this is only a preliminary check)
-        require(_principal_Cu <= Pool(getPoolAdr()).WC_Bond_Cu());
+        require(_principal_Cu <= Pool(getPoolAdr()).WC_Bond_Cu(), "Requested bond principal exceeds availability");
 
         // In case a hash to provide a security for the newly created bond is provided verify if it is a valid bond
         if (_hashOfReferenceBond != 0x0) {
             // Ensure the sender of the transaction is the owner of the bond that is providing the security
-            require(dataStorage[_hashOfReferenceBond].owner == msg.sender);
+            require(dataStorage[_hashOfReferenceBond].owner == msg.sender, "Invalid authorisation");
 
             // Ensure the bond providing the security is in an issued state
-            require(dataStorage[_hashOfReferenceBond].state == Lib.BondState.Issued);
+            require(dataStorage[_hashOfReferenceBond].state == Lib.BondState.Issued, "Reference bond status invalid");
 
             // Ensure the bond providing the security does not expire within the next few days
-            require(dataStorage[_hashOfReferenceBond].maturityDate > now + DURATION_BOND_LOCK_NEXT_STATE_SEC);
+            require(dataStorage[_hashOfReferenceBond].maturityDate > now + DURATION_BOND_LOCK_NEXT_STATE_SEC, "Reference bond maturing too soon");
             
             // Ensure that the principal of the bond providing the underwriting is sufficient to provide underwriting for the specified bond
-            require(((_principal_Cu * BOND_REQUIRED_SECURITY_REFERENCE_PPT) / 10**3) <= dataStorage[_hashOfReferenceBond].principal_Cu);
+            require(((_principal_Cu * BOND_REQUIRED_SECURITY_REFERENCE_PPT) / 10**3) <= dataStorage[_hashOfReferenceBond].principal_Cu, "Reference bond's principal insufficient");
         }
 
         // *************************************

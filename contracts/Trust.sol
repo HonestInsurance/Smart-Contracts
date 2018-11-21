@@ -50,13 +50,15 @@ contract Trust is IntAccessI, ExtAccessI {
         isExtAuth
     {
         // Verify no addresses have been specified previously
-        require(getPoolAdr() == address(0x0));
-        require(getBondAdr() == address(0x0));
-        require(getBankAdr() == address(0x0));
-        require(getPolicyAdr() == address(0x0));
-        require(getSettlementAdr() == address(0x0));
-        require(getAdjustorAdr() == address(0x0));
-        require(getTimerAdr() == address(0x0));
+        require(
+            getPoolAdr() == address(0x0) &&
+            getBondAdr() == address(0x0) &&
+            getBankAdr() == address(0x0) &&
+            getPolicyAdr() == address(0x0) &&
+            getSettlementAdr() == address(0x0) &&
+            getAdjustorAdr() == address(0x0) &&
+            getTimerAdr() == address(0x0),
+            "Contract addresses are already set");
 
         // Initialise the contract addresses for this Pool contract
         setContractAdr(address(this), _poolAdr, _bondAdr, _bankAdr, _policyAdr, _settlementAdr, _adjustorAdr, _timerAdr);

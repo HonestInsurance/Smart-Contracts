@@ -49,7 +49,7 @@ contract Timer is IntAccessI {
         isIntAuth
     {
         // Ensure _dateTime proposed is a DateTime in the future
-        require(_dateTime > now);
+        require(_dateTime > now, "Time must be in the future");
 
         // Add the new notification to the array in mapping - If target address is not defined set it to be msg.sender's address
         notification[_dateTime / 10].push(NotificationEntry({

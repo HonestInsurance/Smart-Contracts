@@ -53,11 +53,11 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         isTrustAuth
     {
         // Ensure the adjustor details provided are valid
-        require(_owner != 0x0);
+        require(_owner != 0x0, "Invalid owner's address");
         // An adjustor needs to be either able to approve settlements or underwrite policies but can potentially also do both
-        require((_settlementApprovalAmount_Cu != 0) || (_policyRiskPointLimit != 0));
+        require((_settlementApprovalAmount_Cu != 0) || (_policyRiskPointLimit != 0), "Invalid settlement approval amount or risk point limit");
         // A valid service agreement hash has to be provided
-        require(_serviceAgreementHash != 0x0);
+        require(_serviceAgreementHash != 0x0, "Invalid service agreement hash");
 
 		// Create a new Adjustor hash by using random input parameters
         bytes32 adjustorHash = keccak256(abi.encodePacked(hashMap.nextIdx, address(this), _owner));
@@ -103,14 +103,14 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         isTrustAuth
     {
         // Ensure the adjustorHash provided exists and belongs to an active adjustor
-        require(hashMap.isActive(_adjustorHash) == true);
+        require(hashMap.isActive(_adjustorHash) == true, "Invalid adjustor hash");
 
         // Ensure the adjustor details provided are valid
-        require(_owner != 0x0);
+        require(_owner != 0x0, "Invalid owner's address");
         // An adjustor needs to be either able to approve settlements or underwrite policies but can potentially also do both
-        require((_settlementApprovalAmount_Cu != 0) || (_policyRiskPointLimit != 0));
+        require((_settlementApprovalAmount_Cu != 0) || (_policyRiskPointLimit != 0), "Invalid settlement approval amount or risk point limit");
         // A valid service agreement hash has to be provided
-        require(_serviceAgreementHash != 0x0);
+        require(_serviceAgreementHash != 0x0, "Invalid service agreement hash");
 
         // Upate the adjustor data
         dataStorage[_adjustorHash].owner = _owner;
@@ -132,7 +132,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         isTrustAuth
     {
         // Ensure the adjustorHash provided exists and belongs to an active adjustor
-        require(hashMap.isActive(_adjustorHash) == true);
+        require(hashMap.isActive(_adjustorHash) == true, "Invalid adjustor hash");
 
         // Upate the adjustor data
         dataStorage[_adjustorHash].owner = 0x0;

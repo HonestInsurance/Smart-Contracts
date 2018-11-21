@@ -45,7 +45,7 @@ contract Settlement is SetupI, IntAccessI, HashMapI {
     * @dev Modifier verifies if the Adjustor hash and signing private key of the transaction are valid
     */
     modifier isAdjustorSettlementPermissioned(bytes32 _adjustorHash, uint _settlementAmount) {
-        require(Adjustor(getAdjustorAdr()).isAdjustorSettlementPermissioned(_adjustorHash, msg.sender, _settlementAmount) == true);
+        require(Adjustor(getAdjustorAdr()).isAdjustorSettlementPermissioned(_adjustorHash, msg.sender, _settlementAmount) == true, "Adjustor's privileges insufficient");
         _;
     }
 
@@ -60,7 +60,7 @@ contract Settlement is SetupI, IntAccessI, HashMapI {
     {
         // In case a policy hash has been provided, verify if it is a valid policy hash
         if (_policyHash != 0x0) {
-            require(Policy(getPolicyAdr()).isValid(_policyHash) == true);
+            require(Policy(getPolicyAdr()).isValid(_policyHash) == true, "Policy hash provided does not exist");
         }
         
         // *** Create the Settlement
@@ -103,9 +103,9 @@ contract Settlement is SetupI, IntAccessI, HashMapI {
         isAdjustorSettlementPermissioned(_adjustorHash, 0)
     {
         // Ensure an active and valid settlement hash has been provided
-        require(hashMap.isActive(_settlementHash) == true);
+        require(hashMap.isActive(_settlementHash) == true, "Invalid settlement hash");
         // Ensure a valid document hash has been provided
-        require(_documentHash != 0x0);
+        require(_documentHash != 0x0, "Invalid document hash");
         
         // Change state to processing
         dataStorage[_settlementHash].state = Lib.SettlementState.Processing;
@@ -124,9 +124,9 @@ contract Settlement is SetupI, IntAccessI, HashMapI {
         isAdjustorSettlementPermissioned(_adjustorHash, _settlementAmount)
     {
         // Ensure an active and valid settlement hash has been provided
-        require(hashMap.isActive(_settlementHash) == true);
+        require(hashMap.isActive(_settlementHash) == true, "Invalid settlement hash");
         // Ensure a valid document hash has been provided
-        require(_documentHash != 0x0);
+        require(_documentHash != 0x0, "Invalid document hash");
     
         // If a previous settlement amount has been set and WC Locked established remove it now
         if (dataStorage[_settlementHash].settlementAmount > 0)
@@ -162,7 +162,7 @@ contract Settlement is SetupI, IntAccessI, HashMapI {
         isAdjustorSettlementPermissioned(_adjustorHash, _expectedSettlementAmount)
     {
         // Ensure an active and valid settlement hash has been provided
-        require(hashMap.isActive(_settlementHash) == true);
+        require(hashMap.isActive(_settlementHash) == true, "Invalid settlement hash");
         // Call the pool and adjust WC Locked accordingly (increase or decrease)
         if (dataStorage[_settlementHash].settlementAmount < _expectedSettlementAmount) {
             // Increase WC locked

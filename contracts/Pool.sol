@@ -479,7 +479,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         isTrustAuth
     {
         // Ensure a change of daylight saving is not already scheduled
-        require(daylightSavingScheduled == false);
+        require(daylightSavingScheduled == false, "Daylight saving already scheduled");
         // Set the flag to schedule the daylight saving change
         daylightSavingScheduled = true;
         // Create a log entry to document the change

@@ -27,7 +27,7 @@ contract IntAccessI {
     */
     constructor(address _trustAdr) public {
         // Verify a valid deployment controller address
-        require(_trustAdr != address(0x0));
+        require(_trustAdr != address(0x0), "Address for Trust provided is invalid");
         // Save the deployment controller's address
         trustAdr = _trustAdr;
     }
@@ -37,21 +37,30 @@ contract IntAccessI {
     */
     modifier isIntAuth() {
         // Verify the sender is either the Trust, Pool, Bond, Bank Policy, Settlement, Adjustor or Timer contract
-        require((msg.sender == trustAdr) || (msg.sender == poolAdr) || (msg.sender == bondAdr) || (msg.sender == bankAdr) || (msg.sender == policyAdr) || (msg.sender == settlementAdr) || (msg.sender == adjustorAdr) || (msg.sender == timerAdr));
+        require(
+            (msg.sender == trustAdr) || 
+            (msg.sender == poolAdr) || 
+            (msg.sender == bondAdr) || 
+            (msg.sender == bankAdr) || 
+            (msg.sender == policyAdr) || 
+            (msg.sender == settlementAdr) || 
+            (msg.sender == adjustorAdr) || 
+            (msg.sender == timerAdr),
+            "Invalid authorisation");
         _;
     }
 
     /**
     * @dev Modifiers verifies if sender is an authorised controller contract
     */
-    modifier isTrustAuth() {require((msg.sender == trustAdr)); _;}
-    modifier isPoolAuth() {require((msg.sender == poolAdr)); _;}
-    modifier isBondAuth() {require((msg.sender == bondAdr)); _;}
-    modifier isBankAuth() {require((msg.sender == bankAdr)); _;}
-    modifier isPolicyAuth() {require((msg.sender == policyAdr)); _;}
-    modifier isSettlementAuth() {require((msg.sender == settlementAdr)); _;}
-    modifier isAdjustorAuth() {require((msg.sender == adjustorAdr)); _;}
-    modifier isTimerAuth() {require((msg.sender == timerAdr)); _;}
+    modifier isTrustAuth() {require((msg.sender == trustAdr), "Invalid authorisation"); _;}
+    modifier isPoolAuth() {require((msg.sender == poolAdr), "Invalid authorisation"); _;}
+    modifier isBondAuth() {require((msg.sender == bondAdr), "Invalid authorisation"); _;}
+    modifier isBankAuth() {require((msg.sender == bankAdr), "Invalid authorisation"); _;}
+    modifier isPolicyAuth() {require((msg.sender == policyAdr), "Invalid authorisation"); _;}
+    modifier isSettlementAuth() {require((msg.sender == settlementAdr), "Invalid authorisation"); _;}
+    modifier isAdjustorAuth() {require((msg.sender == adjustorAdr), "Invalid authorisation"); _;}
+    modifier isTimerAuth() {require((msg.sender == timerAdr), "Invalid authorisation"); _;}
 
     /**
      * @dev This modifiers checks if the provided address is a contract address or an externaly owned account
@@ -62,7 +71,7 @@ contract IntAccessI {
         // Retrieve the size of the code that is stored against the provided address
         assembly { size := extcodesize(_adr) }
         // Ensure that the 'address size' is 0 (if the size is greater than 0 this address is owned by a contract)
-        require(size == 0);
+        require(size == 0, "Address provided must not be a contract address");
         _;
     }
 
@@ -83,14 +92,14 @@ contract IntAccessI {
         isTrustAuth
     {
         // Verify valid address have been provided for all contracts
-        require(_trustAdr != address(0x0));
-        require(_poolAdr != address(0x0));
-        require(_bondAdr != address(0x0));
-        require(_bankAdr != address(0x0));
-        require(_policyAdr != address(0x0));
-        require(_settlementAdr != address(0x0));
-        require(_adjustorAdr != address(0x0));
-        require(_timerAdr != address(0x0)); 
+        require(_trustAdr != address(0x0), "Trust address provided is invalid");
+        require(_poolAdr != address(0x0), "Pool address provided is invalid");
+        require(_bondAdr != address(0x0), "Bond address provided is invalid");
+        require(_bankAdr != address(0x0), "Bank address provided is invalid");
+        require(_policyAdr != address(0x0), "Policy address provided is invalid");
+        require(_settlementAdr != address(0x0), "Settlement address provided is invalid");
+        require(_adjustorAdr != address(0x0), "Adjustor address provided is invalid");
+        require(_timerAdr != address(0x0), "Timer address provided is invalid");
 
         // Save the remaining contract's addresses
         trustAdr = _trustAdr;
