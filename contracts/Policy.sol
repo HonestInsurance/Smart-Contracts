@@ -71,7 +71,10 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
     * @dev Modifier verifies if the Adjustor hash and signing private key and the adjustor's policy risk point limit are sufficient
     */
     modifier isAdjustorPolicyPermissioned(bytes32 _adjustorHash, uint _riskPoints) {
-        require(Adjustor(getAdjustorAdr()).isAdjustorPolicyPermissioned(_adjustorHash, msg.sender, _riskPoints) == true);
+        require(
+            Adjustor(getAdjustorAdr()).isAdjustorPolicyPermissioned(_adjustorHash, msg.sender, _riskPoints) == true,
+            "Adjustor has insufficient privileges"
+            );
         _;
     }
 
@@ -87,9 +90,9 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
         isAdjustorPolicyPermissioned(_adjustorHash, _riskPoints)
     {
         // Ensure valid parameter have been provided
-        require(_owner != 0x0);
-        require(_documentHash != 0x0);
-        require(_riskPoints > 0);
+        require(_owner != 0x0, "Invalid owner's address");
+        require(_documentHash != 0x0, "Invalid policy document hash");
+        require(_riskPoints > 0, "Invalid policy risk points amount");
 
         // Create a new Policy hash by using random input parameters (Timestamp, nextIdx of the PolicyHashMapping)
         bytes32 policyHash = keccak256(abi.encodePacked(hashMap.nextIdx, address(this), _owner));
@@ -136,14 +139,14 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
         isAdjustorPolicyPermissioned(_adjustorHash, _riskPoints)
     {
         // Ensure valid parameter have been provided
-        require(_documentHash != 0x0);
-        require(_riskPoints > 0);
+        require(_documentHash != 0x0, "Invalid policy document hash");
+        require(_riskPoints > 0, "Invalid policy risk points amount");
         // Ensure the policy is a valid and active policy
-        require(isActive(_policyHash) == true);
+        require(isActive(_policyHash) == true, "Invalid policy hash");
 
         if (dataStorage[_policyHash].state == Lib.PolicyState.Issued) {
             // Reconcile the policy and ensure the policy is still in an Issued state
-            require(reconcilePolicy(_policyHash) == Lib.PolicyState.Issued);
+            require(reconcilePolicy(_policyHash) == Lib.PolicyState.Issued, "Invalid policy status");
 
             // Adjust the total issued policy risk points
             totalIssuedPolicyRiskPoints = totalIssuedPolicyRiskPoints + _riskPoints - dataStorage[_policyHash].riskPoints;
@@ -159,7 +162,7 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
             // Calculate the next reconciliation day
             uint nextDay = calculateNextReconciliationDay(_policyHash);
             // If the next reconciliation day is 0 (insufficient funds revert the entire policy update)
-            require(nextDay > 0);
+            require(nextDay > 0, "Policy has insufficient funds");
             // Save the next reconciliation day
             dataStorage[_policyHash].nextReconciliationDay = nextDay;
         } else {
@@ -280,10 +283,10 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
      */
     function suspendPolicy(bytes32 _policyHash) public {
         // Ensure the sender of the transaction is the owner of the policy
-        require(dataStorage[_policyHash].owner == msg.sender);
+        require(dataStorage[_policyHash].owner == msg.sender, "Invalid authorisation");
 
         // Ensure the policy is in an Issued state
-        require(dataStorage[_policyHash].state == Lib.PolicyState.Issued);
+        require(dataStorage[_policyHash].state == Lib.PolicyState.Issued, "Invalid policy status");
 
         // Reconcile this policy (Note: The 'new' state of the policy returned as part of this reconciliation
         // is ignored (even if 'should' be changed to Lapsed because of insufficient funds)
@@ -307,20 +310,20 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
      */
     function unsuspendPolicy(bytes32 _policyHash) public {
         // Ensure the sender of the transaction is the owner of the policy
-        require(dataStorage[_policyHash].owner == msg.sender);
+        require(dataStorage[_policyHash].owner == msg.sender, "Invalid authorisation");
 
         // Ensure the policy is in a Paused state
-        require(dataStorage[_policyHash].state == Lib.PolicyState.Paused);
+        require(dataStorage[_policyHash].state == Lib.PolicyState.Paused, "Invalid policy status");
 
         // Ensure the policy is in between the minimum and maximum policy paused duration
-        require(dataStorage[_policyHash].lastReconciliationDay + MIN_DURATION_POLICY_PAUSED_DAY <= currentPoolDay);
-        require(dataStorage[_policyHash].lastReconciliationDay + MAX_DURATION_POLICY_PAUSED_DAY >= currentPoolDay);
+        require(dataStorage[_policyHash].lastReconciliationDay + MIN_DURATION_POLICY_PAUSED_DAY <= currentPoolDay, "Policy not long enough in paused status");
+        require(dataStorage[_policyHash].lastReconciliationDay + MAX_DURATION_POLICY_PAUSED_DAY >= currentPoolDay, "Policy too long in paused status");
 
         // Get the next reconciliation day
         uint nextReconciliationDay = calculateNextReconciliationDay(_policyHash);
 
         // Ensure sufficient funds are available to pay for todays premium by check if the provided next day is in the future and not 0
-        require(nextReconciliationDay != 0);
+        require(nextReconciliationDay != 0, "Policy has insufficient funds");
 
         // Set the last and next reconciliation day
         dataStorage[_policyHash].lastReconciliationDay = currentPoolDay;
@@ -343,10 +346,14 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
         // If the caller of this function is not the policy contract itself
         if (msg.sender != address(this)) {
             // Ensure the caller of the transaction is the owner of the policy
-            require(dataStorage[_policyHash].owner == msg.sender);
+            require(dataStorage[_policyHash].owner == msg.sender, "Invalid authorisation");
         }
         // Ensure the policy is either in an Issued or Lapsed state
-        require((dataStorage[_policyHash].state == Lib.PolicyState.Issued) || (dataStorage[_policyHash].state == Lib.PolicyState.Lapsed));
+        require(
+            (dataStorage[_policyHash].state == Lib.PolicyState.Issued) || 
+            (dataStorage[_policyHash].state == Lib.PolicyState.Lapsed),
+            "Invalid policy status"
+            );
 
         // If Policy is in an issued state reconcile the policy a last time and remove the risk points
         if (dataStorage[_policyHash].state == Lib.PolicyState.Issued) {
@@ -462,7 +469,7 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
      */
     function reconcilePolicy(bytes32 _policyHash) private returns (Lib.PolicyState newState) {
         // Ensure the policy is in an issued state
-        require(dataStorage[_policyHash].state == Lib.PolicyState.Issued);
+        require(dataStorage[_policyHash].state == Lib.PolicyState.Issued, "Policy status invalid");
         // Calculate the number of days since last reconciliation (Note: Today must not be reconciled - only past days!!!)
         uint totalDays = currentPoolDay - dataStorage[_policyHash].lastReconciliationDay;
         // Only adjust the premiums charged if the total days to reconcile is greater than 0

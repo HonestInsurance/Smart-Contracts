@@ -29,7 +29,7 @@ contract ExtAccessI {
     */
     constructor(address _adr) public {
         // Verify a valid address has been provided
-        require(_adr != address(0x0));
+        require(_adr != address(0x0), "Invalid address provided");
         // Add the address provided to the authorised keys
         addKey(_adr);
     }
@@ -41,7 +41,8 @@ contract ExtAccessI {
         require(
             (authKeys[0] == address(0x0)) ||    // If no key is specified authorisation is granted
             (authKeys[0] == msg.sender) ||      // If it matches key 0 authorisation is granted
-            (authKeys[1] == msg.sender)         // If it matches key 1 authorisation is granted
+            (authKeys[1] == msg.sender),        // If it matches key 1 authorisation is granted
+            "Invalid authorisation"
         );
         _;
     }
@@ -53,13 +54,16 @@ contract ExtAccessI {
         // If 3 or more keys are specified a valid pre-authorisation needs to exist
         if (authKeys[2] != address(0x0)) {
             // Verify if pre-auth exist, is still valid and current sender of the transaction is not the pre-auth key used
-            require((preAuthExpiry > now) && (preAuthKeyUsed != address(0x0)) && (preAuthKeyUsed != msg.sender)); 
+            require((preAuthExpiry > now) && (preAuthKeyUsed != address(0x0)) && (preAuthKeyUsed != msg.sender),
+                "Preauthorisation is inactive or has expired");
+            require(preAuthKeyUsed != msg.sender, "Authorisation must differ from preauthorisation key used");
             // Check the sender of the transaction matches any of the specified keys
             require(
                 (authKeys[1] == msg.sender) ||
                 (authKeys[2] == msg.sender) || 
                 (authKeys[3] == msg.sender) || 
-                (authKeys[4] == msg.sender)
+                (authKeys[4] == msg.sender),
+                "Authorisation key does not match any stored keys"
             );
         
         } else {
@@ -70,7 +74,8 @@ contract ExtAccessI {
                 // One key is currently specified check if it matches that key
                 ((authKeys[1] == address(0x0)) && (authKeys[0] == msg.sender)) ||
                 // Two keys are currently specified check if it matches the key in key slot 1
-                ((authKeys[2] == address(0x0)) && (authKeys[1] == msg.sender))
+                ((authKeys[2] == address(0x0)) && (authKeys[1] == msg.sender)),
+                "Authorisation key does not match any stored keys"
             );
         }
         // Remove pre-authorisation
@@ -85,14 +90,15 @@ contract ExtAccessI {
     */
     function preAuth() public {
         // Ensure that at least 3 keys have been specified
-        require(authKeys[2] != address(0x0));
+        require(authKeys[2] != address(0x0), "A minimum of 3 authorisation keys must be specified");
 
         // Ensure msg.sender matches the keys in key slot 1, 2, 3 or 4
         require(
             (authKeys[1] == msg.sender) || 
             (authKeys[2] == msg.sender) || 
             (authKeys[3] == msg.sender) ||
-            (authKeys[4] == msg.sender)
+            (authKeys[4] == msg.sender),
+            "Provided key already used for pre-authorisation"
         );
         
         // Save the pre-authorisation key used
@@ -110,7 +116,7 @@ contract ExtAccessI {
         isPreAuth
     {
         // Check if it is a valid key
-        require(_adr != address(0x0));
+        require(_adr != address(0x0), "Invalid key provided");
        
         // Check if the new key is not yet part of the authorised keys list (no duplications)
         require(
@@ -118,18 +124,19 @@ contract ExtAccessI {
             (authKeys[1] != _adr) && 
             (authKeys[2] != _adr) &&
             (authKeys[3] != _adr) && 
-            (authKeys[4] != _adr)
+            (authKeys[4] != _adr),
+            "Provided key is invalid as it is already part of the authorised keys list"
         );
         
         // Check if not all key slots have already been filled
-        require(authKeys[4] == address(0x0));
+        require(authKeys[4] == address(0x0), "No empty authorsided keys slots available");
 
         // Check if the address provided is not a contract address (must be an externally owned account)
         uint size;
         // Retrieve the size of the code that is stored against the provided address
         assembly { size := extcodesize(_adr) }
         // Ensure that the 'address size' is 0 (if the size is greater than 0 this address is owned by a contract)
-        require(size == 0);
+        require(size == 0, "Key must not be a contract address");
 
         // Add the key to the first empty key slot
         if (authKeys[0] == address(0x0)) 
@@ -152,7 +159,7 @@ contract ExtAccessI {
         isPreAuth
     {
         // Ensure all key slots have already been filled
-        require(authKeys[4] != address(0x0));
+        require(authKeys[4] != address(0x0), "All key slots must be filled");
 
         // Rotate the keys and remove the key in key slot 0
         authKeys[0] = authKeys[1];

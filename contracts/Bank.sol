@@ -105,13 +105,13 @@ contract Bank is IntAccessI, ExtAccessI {
         isExtAuth
     {
         // Ensure the idx to process is valid.
-        require(bankPaymentAdvice.length > _idx);
+        require(bankPaymentAdvice.length > _idx, "Payment advice index invalid");
 
         // If the array holds the idx verify if it has not already been processed (is empty entry)
-        require(bankPaymentAdvice[_idx].amount != 0);
+        require(bankPaymentAdvice[_idx].amount != 0, "Payment advice index already processed");
         
         // Verify the bankTransactionIdx has not already been processed
-        require(bankTransactionIdxProcessed[_bankTransactionIdx] == false);
+        require(bankTransactionIdxProcessed[_bankTransactionIdx] == false, "Bank transaction index already used");
 
         // Mark the bank transaction index as processed to avoid double processing
         bankTransactionIdxProcessed[_bankTransactionIdx] = true;
@@ -181,13 +181,16 @@ contract Bank is IntAccessI, ExtAccessI {
         returns (bool)
     {
         // Ensure the bankTransactionIdx has not already been processed
-        require(bankTransactionIdxProcessed[_bankTransactionIdx] == false);
+        require(bankTransactionIdxProcessed[_bankTransactionIdx] == false, "Bank transaction index already used");
         
         // Ensure the account type is either PremiumAccount, BondAccount or FundingAccount
-        require((Lib.AccountType(_accountType) == Lib.AccountType.PremiumAccount) || (Lib.AccountType(_accountType) == Lib.AccountType.BondAccount) || (Lib.AccountType(_accountType) == Lib.AccountType.FundingAccount));
+        require((Lib.AccountType(_accountType) == Lib.AccountType.PremiumAccount) || 
+            (Lib.AccountType(_accountType) == Lib.AccountType.BondAccount) || 
+            (Lib.AccountType(_accountType) == Lib.AccountType.FundingAccount), 
+            "Invalid bank account type");
         
         // Verify a paymentAccountHash has been provided for the sender
-        require(_paymentAccountHashSender != bytes32(0x0));
+        require(_paymentAccountHashSender != bytes32(0x0), "Invalid sender payment account hash");
 
         // Mark the bank transaction index as processed to avoid double processing
         bankTransactionIdxProcessed[_bankTransactionIdx] = true;
