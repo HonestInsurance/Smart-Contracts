@@ -27,11 +27,14 @@ const isWinterTime = false;
 // Start deployment of the contracts
 module.exports = async (deployer, network, accounts) => {
     deployer.then(async () => {
-        // Save and copy all the pre-populated Ethereum accounts into the testData accounts!
+        // Use the first account for deployment
+        const deploymentAccount = accounts[0];
+
+        // Save and copy all the pre-populated Ethereum accounts into the testData accounts
         td.accounts = accounts;
 
         // Deploy the library contract
-        await deployer.deploy(abiLib);
+        await deployer.deploy(abiLib, {from: deploymentAccount});
 
         // Linking the library to the contracts that need to be deployed next and depend on it
         await deployer.link(abiLib, abiTrust);
@@ -44,14 +47,14 @@ module.exports = async (deployer, network, accounts) => {
         await deployer.link(abiLib, abiTimer);
 
         // Deploy all the remaining contracts
-        await deployer.deploy(abiTrust);
-        await deployer.deploy(abiPool, (await abiTrust.deployed()).address);
-        await deployer.deploy(abiBond, (await abiTrust.deployed()).address);
-        await deployer.deploy(abiBank, (await abiTrust.deployed()).address);
-        await deployer.deploy(abiPolicy, (await abiTrust.deployed()).address);
-        await deployer.deploy(abiSettlement, (await abiTrust.deployed()).address);
-        await deployer.deploy(abiAdjustor, (await abiTrust.deployed()).address);
-        await deployer.deploy(abiTimer, (await abiTrust.deployed()).address);
+        await deployer.deploy(abiTrust, {from: deploymentAccount});
+        await deployer.deploy(abiPool, (await abiTrust.deployed()).address, {from: deploymentAccount});
+        await deployer.deploy(abiBond, (await abiTrust.deployed()).address, {from: deploymentAccount});
+        await deployer.deploy(abiBank, (await abiTrust.deployed()).address, {from: deploymentAccount});
+        await deployer.deploy(abiPolicy, (await abiTrust.deployed()).address, {from: deploymentAccount});
+        await deployer.deploy(abiSettlement, (await abiTrust.deployed()).address, {from: deploymentAccount});
+        await deployer.deploy(abiAdjustor, (await abiTrust.deployed()).address, {from: deploymentAccount});
+        await deployer.deploy(abiTimer, (await abiTrust.deployed()).address, {from: deploymentAccount});
 
         // Save the contracts in testdata
         td.pool = await abiPool.deployed();
@@ -63,16 +66,6 @@ module.exports = async (deployer, network, accounts) => {
         td.timer = await abiTimer.deployed();
         td.trust = await abiTrust.deployed();
 
-        // All all the event log files to the abi decoder object
-        td.abiDecoder = abiDecoder;
-        td.abiDecoder.addABI(td.trust.abi);
-        td.abiDecoder.addABI(td.pool.abi);
-        td.abiDecoder.addABI(td.bond.abi);
-        td.abiDecoder.addABI(td.bank.abi);
-        td.abiDecoder.addABI(td.policy.abi);
-        td.abiDecoder.addABI(td.settlement.abi);
-        td.abiDecoder.addABI(td.adjustor.abi);
-
         // Initialise pool ecosystem; Link all contracts together and set next overnight processing timestamp
         await td.trust.initEcosystem(
             td.pool.address,
@@ -82,29 +75,50 @@ module.exports = async (deployer, network, accounts) => {
             td.settlement.address,
             td.adjustor.address,
             td.timer.address,
-            isWinterTime
+            isWinterTime,
+            {from: deploymentAccount}
         );
 
-        // Save the current day
-        td.currentPoolDay = (await td.pool.currentPoolDay()).valueOf();
-        // Save the initial overnight processing timestamp
-        td.nextOvernightProcessingTimestamp = parseInt((await txFunc.getEventsPromise(td.pool.LogPool({ subject: 'SetInitialProcessingTime' }, { fromBlock: 0, toBlock: "latest" })))[0].args.value);
+        // Perform these steps only for development network to enable testing procedures to execute
+        if (network == "development") {
+            // Save all the event log files to the abi decoder object
+            td.abiDecoder = abiDecoder;
+            td.abiDecoder.addABI(td.trust.abi);
+            td.abiDecoder.addABI(td.pool.abi);
+            td.abiDecoder.addABI(td.bond.abi);
+            td.abiDecoder.addABI(td.bank.abi);
+            td.abiDecoder.addABI(td.policy.abi);
+            td.abiDecoder.addABI(td.settlement.abi);
+            td.abiDecoder.addABI(td.adjustor.abi);
 
+            // Save the current day
+            td.currentPoolDay = (await td.pool.currentPoolDay()).valueOf();
+            // Save the initial overnight processing timestamp
+            td.nextOvernightProcessingTimestamp = parseInt((await txFunc.getEventsPromise(td.pool.LogPool({ subject: 'SetInitialProcessingTime' }, { fromBlock: 0, toBlock: "latest" })))[0].args.value);
+        }
             
-        // Print all the references for POSTMAN copy past
+        // Print deployment summary
         console.log("");
-        console.log("");
-        console.log("Copy and paste the blow content into POSTMAN");
-        console.log("--------------------------------------------");
-        // console.log("url:http://localhost:5000");
-        console.log("TrustContractAdr:" + td.trust.address);
-        console.log("PoolContractAdr:" + td.pool.address);
-        console.log("BondContractAdr:" + td.bond.address);
-        console.log("BankContractAdr:" + td.bank.address);
-        console.log("PolicyContractAdr:" + td.policy.address);
-        console.log("SettlementContractAdr:" + td.settlement.address);
-        console.log("AdjustorContractAdr:" + td.adjustor.address);
-        console.log("TimerContractAdr:" + td.timer.address);
+        console.log("***************************************************************************");
+        console.log("*                                                                         *");
+        console.log("*  DEPLOYMENT SUMMARY                                                     *");
+        console.log("*                                                                         *");
+        console.log("***************************************************************************");
+        console.log("*                                                                         *");
+        console.log("*    Deployment network:     " + network);
+        console.log("*    Deployment address:     " + deploymentAccount + "   *");
+        console.log("*-------------------------------------------------------------------------*");
+        console.log("*    Library address:        " + (await abiLib.deployed()).address + "   *");
+        console.log("*-------------------------------------------------------------------------*");
+        console.log("*    TrustContractAdr:       " + td.trust.address + "   *");
+        console.log("*    PoolContractAdr:        " + td.pool.address + "   *");
+        console.log("*    BondContractAdr:        " + td.bond.address + "   *");
+        console.log("*    BankContractAdr:        " + td.bank.address + "   *");
+        console.log("*    PolicyContractAdr:      " + td.policy.address + "   *");
+        console.log("*    SettlementContractAdr:  " + td.settlement.address + "   *");
+        console.log("*    AdjustorContractAdr:    " + td.adjustor.address + "   *");
+        console.log("*    TimerContractAdr:       " + td.timer.address + "   *");
+        console.log("***************************************************************************");
         console.log("");
     });
 };
