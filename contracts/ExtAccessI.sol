@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 
 /** @title Interface contract managing external access keys for authorisation and authentication.*/
@@ -18,7 +18,7 @@ contract ExtAccessI {
     mapping(uint => address) private authKeys;
 
     // Address variable that was used to perform pre-authorisation
-    address private preAuthKeyUsed = 0x0;
+    address private preAuthKeyUsed = address(0x0);
 
     // Pre-authorisation expiry timestamp
     uint private preAuthExpiry = 0;

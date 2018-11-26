@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -173,7 +173,7 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         returns (bool success, bytes32 info, bytes32 bondHash, bool reduceWcTransit)
     {
         // Verify if the paymentSubject provided matches the any of the Bond hashes
-        if (dataStorage[_paymentSubject].owner != 0x0)
+        if (dataStorage[_paymentSubject].owner != address(0x0))
             bondHash = _paymentSubject;
         else 
             return (false, bytes32("PaymentSubject"), 0x0, false);

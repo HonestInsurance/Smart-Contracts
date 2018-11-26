@@ -9,6 +9,7 @@
 const td = require("../test/misc/testData.js");
 const txFunc = require("../test/misc/txFunc.js");
 const abiDecoder = require('abi-decoder');
+const miscFunc = require("../test/misc/miscFunc.js");
 
 // Load the artifacts of the contracts that are deployed
 const abiLib = artifacts.require("./Lib.sol");
@@ -67,7 +68,7 @@ module.exports = async (deployer, network, accounts) => {
         td.trust = await abiTrust.deployed();
 
         // Initialise pool ecosystem; Link all contracts together and set next overnight processing timestamp
-        await td.trust.initEcosystem(
+        var tx = await td.trust.initEcosystem(
             td.pool.address,
             td.bond.address,
             td.bank.address,
@@ -92,16 +93,17 @@ module.exports = async (deployer, network, accounts) => {
             td.abiDecoder.addABI(td.adjustor.abi);
 
             // Save the current day
-            td.currentPoolDay = (await td.pool.currentPoolDay()).valueOf();
+            td.currentPoolDay = (await td.pool.currentPoolDay()).toNumber();
             // Save the initial overnight processing timestamp
-            td.nextOvernightProcessingTimestamp = parseInt((await txFunc.getEventsPromise(td.pool.LogPool({ subject: 'SetInitialProcessingTime' }, { fromBlock: 0, toBlock: "latest" })))[0].args.value);
-        }
-            
+            td.nextOvernightProcessingTimestamp = td.abiDecoder.decodeLogs(tx.receipt.rawLogs)[8].events[2].value;
+        }        
+        
+        
         // Print deployment summary
         console.log("");
         console.log("***************************************************************************");
         console.log("*                                                                         *");
-        console.log("*  DEPLOYMENT SUMMARY                                                     *");
+        console.log("*  DEPLOYMENT SUMMARY                               " + miscFunc.getLocalDateStringFromEpoch(td.abiDecoder.decodeLogs(tx.receipt.rawLogs)[0].events[3].value) + "   *");
         console.log("*                                                                         *");
         console.log("***************************************************************************");
         console.log("*                                                                         *");
