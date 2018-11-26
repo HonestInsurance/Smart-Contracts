@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 import "./Lib.sol";
 import "./SetupI.sol";
@@ -53,7 +53,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         isTrustAuth
     {
         // Ensure the adjustor details provided are valid
-        require(_owner != 0x0, "Invalid owner's address");
+        require(_owner != address(0x0), "Invalid owner's address");
         // An adjustor needs to be either able to approve settlements or underwrite policies but can potentially also do both
         require((_settlementApprovalAmount_Cu != 0) || (_policyRiskPointLimit != 0), "Invalid settlement approval amount or risk point limit");
         // A valid service agreement hash has to be provided
@@ -106,7 +106,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         require(hashMap.isActive(_adjustorHash) == true, "Invalid adjustor hash");
 
         // Ensure the adjustor details provided are valid
-        require(_owner != 0x0, "Invalid owner's address");
+        require(_owner != address(0x0), "Invalid owner's address");
         // An adjustor needs to be either able to approve settlements or underwrite policies but can potentially also do both
         require((_settlementApprovalAmount_Cu != 0) || (_policyRiskPointLimit != 0), "Invalid settlement approval amount or risk point limit");
         // A valid service agreement hash has to be provided
@@ -135,7 +135,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         require(hashMap.isActive(_adjustorHash) == true, "Invalid adjustor hash");
 
         // Upate the adjustor data
-        dataStorage[_adjustorHash].owner = 0x0;
+        dataStorage[_adjustorHash].owner = address(0x0);
         dataStorage[_adjustorHash].policyRiskPointLimit = 0;
         dataStorage[_adjustorHash].settlementApprovalAmount_Cu = 0;
 
@@ -143,7 +143,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
         hashMap.archive(_adjustorHash);
 
         // Add log entry to document update of the adjustor
-        emit LogAdjustor(_adjustorHash, 0x0, bytes32(0), now);
+        emit LogAdjustor(_adjustorHash, address(0x0), bytes32(0), now);
     }
 
     // *******************************

@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 import "./Lib.sol";
 import "./IntAccessI.sol";
@@ -128,9 +128,15 @@ contract Pool is SetupI, IntAccessI, NotificationI {
 
         // Create payment advice
         if (totalPremiumYesterday_Cu > 0) {
+            //bytes32 help = bytes32(abi.encodePacked(getPoolAdr(), "    "));
             // Create payment advice for the premium payment
-            Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Premium, BOND_ACCOUNT_PAYMENT_HASH, 
-                bytes32(yesterdayPoolDay), totalPremiumYesterday_Cu, bytes32(getPoolAdr()));
+            Bank(getBankAdr()).createPaymentAdvice(
+                Lib.PaymentAdviceType.Premium, 
+                BOND_ACCOUNT_PAYMENT_HASH, 
+                bytes32(yesterdayPoolDay), 
+                totalPremiumYesterday_Cu,
+                bytes32("Pool")
+                );
             
             // Adjust WC_Bal_PA_Cu
             WC_Bal_PA_Cu -= totalPremiumYesterday_Cu;
@@ -143,7 +149,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             if (paymentTrust >= 1) {
                 // Create payment advice for trust
                 Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Trust, TRUST_ACCOUNT_PAYMENT_HASH, 
-                    bytes32(yesterdayPoolDay), paymentTrust, bytes32(getPoolAdr()));
+                    bytes32(yesterdayPoolDay), paymentTrust, bytes32("Pool"));
                 // Adjust WC_Bal_FA_Cu
                 WC_Bal_FA_Cu -= paymentTrust;
             }
@@ -152,7 +158,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             if (paymentPoolOperators >= 1) {
                 // Create payment advice for the pool operators
                 Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.PoolOperator, OPERATOR_ACCOUNT_PAYMENT_HASH, 
-                    bytes32(yesterdayPoolDay), paymentPoolOperators, bytes32(getPoolAdr()));
+                    bytes32(yesterdayPoolDay), paymentPoolOperators, bytes32("Pool"));
                 // Adjust WC_Bal_FA_Cu
                 WC_Bal_FA_Cu -= paymentPoolOperators;
             }
@@ -166,7 +172,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             uint overflowAmount_Cu = WC_Bal_BA_Cu - (5 * bondMaturityPayoutFuturePerDay_Cu);
             // Create payment advice for funds being sent to the Funding Account
             Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Overflow, FUNDING_ACCOUNT_PAYMENT_HASH, 
-                bytes32(yesterdayPoolDay), overflowAmount_Cu, bytes32(getPoolAdr()));
+                bytes32(yesterdayPoolDay), overflowAmount_Cu, bytes32("Pool"));
             // Adjust WC_Bal_BA_Cu
             WC_Bal_BA_Cu -= overflowAmount_Cu;
             // Add log entries
@@ -269,7 +275,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         // Book a new timer notification to process the first batch of policies in 5 min from now if required
         (uint firstIdx,,) = Policy(getPolicyAdr()).hashMap();
         // Schedule the first batch of policy processing
-        Timer(getTimerAdr()).addNotification(now + 300, uint8(0), bytes32(firstIdx), Policy(getPolicyAdr()));
+        Timer(getTimerAdr()).addNotification(now + 300, uint8(0), bytes32(firstIdx), address(Policy(getPolicyAdr())));
 
         // ********************************************************************************
         // *** Return the time when the next processing needs to occur
@@ -364,7 +370,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
                 // Increase the balance in the Bond Account
                 WC_Bal_BA_Cu += _bankCreditAmount_Cu;
                 // return success
-                return (true, 0x0, bytes32(getPoolAdr()));
+                return (true, 0x0, bytes32("Pool"));
             } else {
                 // An invalid external payment has been made into the Bond account - return false to refund payment
                 return (false, bytes32("UnauthorisedPayment"), 0x0);
@@ -377,7 +383,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             // If it is an overflow payment increase Funding account balance
             WC_Bal_FA_Cu += _bankCreditAmount_Cu;
             // return success
-            return (true, 0x0, bytes32(getPoolAdr()));
+            return (true, 0x0, bytes32("Pool"));
         }
         
         // ******************************************************************************************

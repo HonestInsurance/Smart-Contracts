@@ -31,14 +31,14 @@ exports.verifyDeployedContracts = async () => {
     const trustAdrRef = await td.trust.getContractAdr();
 
     // Verify if all the contracts are cross referenced correctly (only point to each other)
-    miscFunc.verifyAllContractReferenceAdr(0, 'Pool',       poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
-    miscFunc.verifyAllContractReferenceAdr(1, 'Bond',       poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
-    miscFunc.verifyAllContractReferenceAdr(2, 'Bank',       poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
-    miscFunc.verifyAllContractReferenceAdr(3, 'Policy',     poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
-    miscFunc.verifyAllContractReferenceAdr(4, 'Settlement', poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
-    miscFunc.verifyAllContractReferenceAdr(5, 'Adjustor',   poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
-    miscFunc.verifyAllContractReferenceAdr(6, 'Timer',      poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
-    miscFunc.verifyAllContractReferenceAdr(7, 'Trust',      poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(0, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(1, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(2, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(3, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(4, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(5, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(6, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
+    miscFunc.verifyAllContractReferenceAdr(7, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef);
 }
 
 // adjustDaylightSaving()

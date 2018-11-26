@@ -27,14 +27,16 @@ exports.setWcExpenses = async (_wcExpensesPerDay_Cu) => {
     td.wc_exp_cu = (setupI.DURATION_WC_EXPENSE_HISTORY_DAYS) * _wcExpensesPerDay_Cu;     // 1000.00 per day
     // Update wc expenses in the pool
     const tx = await td.trust.setWcExpenses(td.wc_exp_cu, {from: td.accounts[0]});
+    // Extract the decoded logs
+    const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
 
     // Verify Event 0
-    miscFunc.verifyPoolLog(tx, 0, 'WcExpensesAdjustmentCu', td.currentPoolDay, td.wc_exp_cu, null);
+    miscFunc.verifyPoolLog(logs, 0, 'WcExpensesAdjustmentCu', td.currentPoolDay, td.wc_exp_cu, null);
     
     // Verify the new value for wc expenses set in the pool
-    expect(td.wc_exp_cu).to.be.eql((await td.pool.WC_Exp_Cu()).valueOf());
+    expect((await td.pool.WC_Exp_Cu()).toNumber()).to.be.equal(td.wc_exp_cu);
     // Verify the overwrite flag is set
-    expect(true).to.be.eql(await td.pool.overwriteWcExpenses());
+    expect(await td.pool.overwriteWcExpenses()).to.be.equal(true);
 }
 
 // dailyOvernightProcessing()

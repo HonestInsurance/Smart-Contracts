@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -90,7 +90,7 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
         isAdjustorPolicyPermissioned(_adjustorHash, _riskPoints)
     {
         // Ensure valid parameter have been provided
-        require(_owner != 0x0, "Invalid owner's address");
+        require(_owner != address(0x0), "Invalid owner's address");
         require(_documentHash != 0x0, "Invalid policy document hash");
         require(_riskPoints > 0, "Invalid policy risk points amount");
 
@@ -189,7 +189,7 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
         returns (bool success, bytes32 info, bytes32 policyHash)
     {
          // Verify if the paymentSubject provided matches the any of the Policy hashes
-        if (dataStorage[_paymentSubject].owner != 0x0)
+        if (dataStorage[_paymentSubject].owner != address(0x0))
             policyHash = _paymentSubject;
         else 
             return (false, bytes32("PaymentSubject"), 0x0);

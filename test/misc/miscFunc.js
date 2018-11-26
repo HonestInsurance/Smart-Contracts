@@ -65,7 +65,7 @@ exports.hexToAscii = function(str, len) {
             str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
         else str += String.fromCharCode(32);
     }
-    return str;
+    return str.trim();
 }
 
 // Shortens the provided hash to save some screen space
@@ -106,7 +106,7 @@ exports.formatNr = function(val, isCurrency, length, allignLeft, thousandSeparat
 }
 
 // function getBondPaymentAccountHashSender(idx) { return web3.sha3('Sam Smith Bond '+ idx + '12-55555-123456-00' + idx); }
-exports.getRandomHash = function() { var d = new Date(); return web3.sha3('Some random string' + d.getMilliseconds()); }
+exports.getRandomHash = function() { return web3.utils.randomHex(32); }
 exports.getEmptyHash = function() { return "0x0000000000000000000000000000000000000000000000000000000000000000"; }
 exports.getEmptyAdr = function() { return "0x0000000000000000000000000000000000000000"; }
 exports.getIdxHash = function(idx) { return web3.sha3('Some random string' + idx); }
@@ -140,14 +140,14 @@ exports.getBondMaturityPaymentsAveragePerDay = function() {
 }
 
 // Function verifies all contract addresses specified for any of the dependent contracts
-exports.verifyAllContractReferenceAdr = function(idx, contractAdrMsg, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef) {
-    expect(poolAdrRef[idx]).to.be.eql(bondAdrRef[idx]);
-    expect(poolAdrRef[idx]).to.be.eql(bankAdrRef[idx]);
-    expect(poolAdrRef[idx]).to.be.eql(policyAdrRef[idx]);
-    expect(poolAdrRef[idx]).to.be.eql(settlementAdrRef[idx]);
-    expect(poolAdrRef[idx]).to.be.eql(adjustorAdrRef[idx]);
-    expect(poolAdrRef[idx]).to.be.eql(timerAdrRef[idx]);
-    expect(poolAdrRef[idx]).to.be.eql(trustAdrRef[idx]);
+exports.verifyAllContractReferenceAdr = function(idx, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef) {
+    expect(poolAdrRef[idx]).to.be.equal(bondAdrRef[idx]);
+    expect(poolAdrRef[idx]).to.be.equal(bankAdrRef[idx]);
+    expect(poolAdrRef[idx]).to.be.equal(policyAdrRef[idx]);
+    expect(poolAdrRef[idx]).to.be.equal(settlementAdrRef[idx]);
+    expect(poolAdrRef[idx]).to.be.equal(adjustorAdrRef[idx]);
+    expect(poolAdrRef[idx]).to.be.equal(timerAdrRef[idx]);
+    expect(poolAdrRef[idx]).to.be.equal(trustAdrRef[idx]);
 }
 
 // Function compares the difference between two hash maps (first, next and count)
@@ -155,72 +155,79 @@ exports.verifyHashMap = function(_beforeHashMap, _afterHashMap, _added)
 {
     // A new hash has been added to the hash map
     if (_added == true) {
-        expect(+_beforeHashMap[1].valueOf() + +1).to.be.eql(+_afterHashMap[1].valueOf());
-        expect(+_beforeHashMap[2].valueOf() + +1).to.be.eql(+_afterHashMap[2].valueOf());
+        expect(_beforeHashMap[1].toNumber() + 1).to.be.equal(+_afterHashMap[1].toNumber());
+        expect(_beforeHashMap[2].toNumber() + 1).to.be.equal(+_afterHashMap[2].toNumber());
     }
     // The hash map has not changed
     else if (_added == null) {
-        expect(_beforeHashMap[1].valueOf()).to.be.eql(+_afterHashMap[1].valueOf());
-        expect(_beforeHashMap[2].valueOf()).to.be.eql(+_afterHashMap[2].valueOf());
+        expect(_beforeHashMap[1].toNumber()).to.be.equal(_afterHashMap[1].toNumber());
+        expect(_beforeHashMap[2].toNumber()).to.be.equal(_afterHashMap[2].toNumber());
     }
     // A hash has been 'removed' (archived)
     else if (_added == false) {
-        expect(_beforeHashMap[1].valueOf()).to.be.eql(+_afterHashMap[1].valueOf());
-        expect(_beforeHashMap[2].valueOf()).to.be.eql(+_afterHashMap[2].valueOf() + +1);
+        expect(_beforeHashMap[1].toNumber()).to.be.equal(_afterHashMap[1].toNumber());
+        expect(_beforeHashMap[2].toNumber()).to.be.equal(_afterHashMap[2].toNumber() + 1);
     }
 }
 
-
-
 // event LogPool(bytes32 indexed subject, uint indexed day, uint indexed value, uint timestamp);
-exports.verifyPoolLog = function(_tx, _idx, _subject, _day, _value, _timestamp)
+exports.verifyPoolLog = function(_logs, _idx, _subject, _day, _value, _timestamp)
 {
-    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
-    // If a parameter has been provided verify it matches _data
-    if (_subject != null)               expect(_subject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[0].value).trim());
-    if (_day != null)                   expect(parseInt(_day)).to.be.equal(parseInt(decodedLogs[_idx].events[1].value));
-    if (_value != null)                 expect(parseInt(_value)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
+    // Verify the provided log is a pool log with the name LogPool
+    expect("LogPool").to.be.equal(_logs[_idx].name);
+    // Verify the event was created by the correct contract
+    expect(td.pool.address).to.be.equal(_logs[_idx].address);
+
+    if (_subject != null)               expect(miscFunc.hexToAscii(_logs[_idx].events[0].value)).to.be.equal(_subject);
+    if (_day != null)                   expect(Number(_logs[_idx].events[1].value)).to.be.equal(_day);
+    if (_value != null)                 expect(Number(_logs[_idx].events[2].value)).to.be.equal(_value);
+    if (_timestamp != null)             expect(Number(_logs[_idx].events[3].value)).to.be.equal(_timestamp);
 }
 
 // event LogTrust(bytes32 indexed subject, address indexed adr, bytes32 indexed info, uint timestamp);
-exports.verifyTrustLog = function(_tx, _idx, _subject, _adr, _info, _timestamp)
+exports.verifyTrustLog = function(_logs, _idx, _subject, _adr, _info, _timestamp)
 {
-    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // Verify the provided log is a pool log with the name LogTrust
+    expect("LogTrust").to.be.equal(_logs[_idx].name);
+    // Verify the event was created by the correct contract
+    expect(td.trust.address).to.be.equal(_logs[_idx].address)
+
     // If a parameter has been provided verify it matches _data
-    if (_subject != null)               expect(_subject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[0].value).trim());
-    if (_adr != null)                   expect(_adr).to.be.equal(decodedLogs[_idx].events[1].value);
-    if (_info != null)                  expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
+    if (_subject != null)               expect(miscFunc.hexToAscii(_logs[_idx].events[0].value)).to.be.equal(_subject);
+    if (_adr != null)                   expect(web3.utils.toChecksumAddress(_logs[_idx].events[1].value)).to.be.equal(_adr);
+    if (_info != null)                  expect(_logs[_idx].events[2].value).to.be.equal(_info);
+    if (_timestamp != null)             expect(Number(_logs[_idx].events[3].value)).to.be.equal(_timestamp);
 }
 
 // event LogBank(bytes32 indexed internalReferenceHash, uint indexed accountType, bool indexed success, 
 //               bytes32 paymentAccountHash, bytes32 paymentSubject, bytes32 info, uint timestamp, uint transactionType, uint amount);
-exports.verifyBankLog = function(_tx, _idx, _internalReferenceHash, _accountType, _success, _paymentAccountHash,
+exports.verifyBankLog = function(_logs, _idx, _internalReferenceHash, _accountType, _success, _paymentAccountHash,
     _paymentSubject, _info, _timestamp, _transactionType, _amount)
 {
-    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // Verify the provided log is a pool log with the name LogBank
+    expect("LogBank").to.be.equal(_logs[_idx].name);
+    // Verify the event was created by the correct contract
+    expect(td.bank.address).to.be.equal(_logs[_idx].address)
+
     // If a parameter has been provided verify it matches _data
-    if (_internalReferenceHash != null) expect(_internalReferenceHash).to.be.equal(decodedLogs[_idx].events[0].value);
-    if (_accountType != null)           expect(parseInt(_accountType)).to.be.equal(parseInt(decodedLogs[_idx].events[1].value));
-    if (_success != null)               expect(_success).to.be.eql(decodedLogs[_idx].events[2].value);
-    if (_paymentAccountHash != null) {
-        if (parseInt(_paymentAccountHash) > (Math.pow(10, 18)))
-            expect(_paymentAccountHash).to.be.equal(decodedLogs[_idx].events[3].value);
-        else expect(parseInt(_paymentAccountHash)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
-    }
-    if (_paymentSubject != null) {
-        if (_paymentSubject == 'Pool')
-            expect(_paymentSubject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[4].value).trim());
-        else expect(_paymentSubject).to.be.equal(decodedLogs[_idx].events[4].value);
-    }
-    if (_info != null)                  expect(_info).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[5].value).trim());
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[6].value));
-    if (_transactionType != null)       expect(parseInt(_transactionType)).to.be.equal(parseInt(decodedLogs[_idx].events[7].value));
-    if (_amount != null)                expect(parseInt(_amount)).to.be.equal(parseInt(decodedLogs[_idx].events[8].value));
+    if (_internalReferenceHash != null) expect(_logs[_idx].events[0].value).to.be.equal(_internalReferenceHash);
+    if (_accountType != null)           expect(Number(_logs[_idx].events[1].value)).to.be.equal(_accountType);
+    if (_success != null)               expect(_logs[_idx].events[2].value).to.be.equal(_success);
+    // if (_paymentAccountHash != null) {
+    //     if (parseInt(_paymentAccountHash) > (Math.pow(10, 18)))
+    //         expect(_paymentAccountHash).to.be.equal(decodedLogs[_idx].events[3].value);
+    //     else expect(parseInt(_paymentAccountHash)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
+    // }
+    // if (_paymentSubject != null) {
+    //     if (_paymentSubject == 'Pool')
+    //         expect(_paymentSubject).to.be.equal(miscFunc.hexToAscii(decodedLogs[_idx].events[4].value).trim());
+    //     else expect(_paymentSubject).to.be.equal(decodedLogs[_idx].events[4].value);
+    // }
+    if (_info != null)                  expect(miscFunc.hexToAscii(_logs[_idx].events[5].value)).to.be.equal(_info);
+    if (_timestamp != null)             expect(Number(_logs[_idx].events[6].value)).to.be.equal(_timestamp);
+    if (_transactionType != null)       expect(Number(_logs[_idx].events[7].value)).to.be.equal(_transactionType);
+    if (_amount != null)                expect(Number(_logs[_idx].events[8].value)).to.be.equal(_amount);
 }
-
-
 
 // Function verifies if the data in _data matches the other parameter if they are provided
 exports.verifyBondData = function(_data, _idx, _owner, _paymentAccountHash, _principal_Cu, 
@@ -228,124 +235,120 @@ exports.verifyBondData = function(_data, _idx, _owner, _paymentAccountHash, _pri
     _nextStateExpiryDate, _maturityDate, _state, _securityReferenceHash) 
 {
     // If a parameter has been provided verify it matches _data
-    if (_idx != null)                           expect(_data[0].valueOf()).to.be.eql(_idx);
-    if (_owner != null)                         expect(_data[1].valueOf()).to.be.eql(_owner);
-    if (_paymentAccountHash != null)            expect(_data[2].valueOf()).to.be.eql(_paymentAccountHash);
-    if (_principal_Cu != null)                  expect(_data[3].valueOf()).to.be.eql(_principal_Cu);
-    if (_yield_Ppb != null)                     expect(_data[4].valueOf()).to.be.eql(_yield_Ppb);
-    if (_maturityPayoutAmount_Cu != null)       expect(_data[5].valueOf()).to.be.eql(_maturityPayoutAmount_Cu);
-    if (_creationDate != null)                  expect(_data[6].valueOf()).to.be.eql(_creationDate);
-    if (_nextStateExpiryDate != null)           expect(_data[7].valueOf()).to.be.eql(_nextStateExpiryDate);
-    if (_maturityDate != null)                  expect(_data[8].valueOf()).to.be.eql(_maturityDate);
-    if (_state != null)                         expect(_data[9].valueOf()).to.be.eql(_state);
-    if (_securityReferenceHash != null)         expect(_data[10].valueOf()).to.be.eql(_securityReferenceHash);
-    // Return dummy value to be awaited
-    return 0;
+    if (_idx != null)                           expect(_data.idx.toNumber()).to.be.equal(_idx);
+    if (_owner != null)                         expect(_data.owner).to.be.equal(_owner);
+    if (_paymentAccountHash != null)            expect(_data.paymentAccountHash).to.be.equal(_paymentAccountHash);
+    if (_principal_Cu != null)                  expect(_data.principal_Cu.toNumber()).to.be.equal(_principal_Cu);
+    if (_yield_Ppb != null)                     expect(_data.yield_Ppb.toNumber()).to.be.equal(_yield_Ppb);
+    if (_maturityPayoutAmount_Cu != null)       expect(_data.maturityPayoutAmount_Cu.toNumber()).to.be.equal(_maturityPayoutAmount_Cu);
+    if (_creationDate != null)                  expect(_data.creationDate.toNumber()).to.be.equal(_creationDate);
+    if (_nextStateExpiryDate != null)           expect(_data.nextStateExpiryDate.toNumber()).to.be.equal(_nextStateExpiryDate);
+    if (_maturityDate != null)                  expect(_data.maturityDate.toNumber()).to.be.equal(_maturityDate);
+    if (_state != null)                         expect(_data.state.toNumber()).to.be.equal(_state);
+    if (_securityReferenceHash != null)         expect(_data.securityReferenceHash).to.be.equal(_securityReferenceHash);
 }
 
 // event LogBond(bytes32 indexed bondHash, address indexed owner, bytes32 indexed info, uint timestamp, uint state);
-exports.verifyBondLog = function(_tx, _idx, _bondHash, _owner, _info, _timestamp, _state)
+exports.verifyBondLog = function(_logs, _idx, _bondHash, _owner, _info, _timestamp, _state)
 {
-    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // Verify the provided log is a bond log with the name LogBond
+    expect("LogBond").to.be.equal(_logs[_idx].name);
+    // Verify the event was created by the correct contract
+    expect(td.bond.address).to.be.equal(_logs[_idx].address)
+
     // If a parameter has been provided verify it matches _data
-    if (_bondHash != null)              expect(_bondHash).to.be.equal(decodedLogs[_idx].events[0].value);
-    if (_owner != null)                 expect(_owner).to.be.equal(decodedLogs[_idx].events[1].value);
-    if (_info != null) {
-        if (parseInt(_info) > (Math.pow(10, 18)))
-            expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
-        else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
-    }
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
-    if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
+    if (_bondHash != null)          expect(_logs[_idx].events[0].value).to.be.equal(_bondHash);
+    if (_owner != null)             expect(web3.utils.toChecksumAddress(_logs[_idx].events[1].value)).to.be.equal(_owner);
+    if (_info != null)              expect(_logs[_idx].events[2].value).to.be.eql(_info);
+    if (_timestamp != null)         expect(Number(_logs[_idx].events[3].value)).to.be.equal(_timestamp);
+    if (_state != null)             expect(Number(_logs[_idx].events[4].value)).to.be.equal(_state);
     // Return the bondHash stored in the event log
-    return decodedLogs[_idx].events[0].value;
+    return _logs[_idx].events[0].value;
 }
-
-
 
 // Function verifies if the data in _data matches the other parameter if they are provided
 exports.verifyPolicyData = function(_data, _idx, _owner, _paymentAccountHash, _documentHash, 
     _riskPoints, _premiumCredited_Cu, _premiumCharged_Cu_Ppt, _state, _lastReconciliationDay, _nextReconciliationDay) 
 {
-    if (_idx != null)                           expect(_data[0].valueOf()).to.be.eql(_idx);
-    if (_owner != null)                         expect(_data[1].valueOf()).to.be.eql(_owner);
-    if (_paymentAccountHash != null)            expect(_data[2].valueOf()).to.be.eql(_paymentAccountHash);
-    if (_documentHash != null)                  expect(_data[3].valueOf()).to.be.eql(_documentHash);
-    if (_riskPoints != null)                    expect(_data[4].valueOf()).to.be.eql(_riskPoints);
-    if (_premiumCredited_Cu != null)            expect(_data[5].valueOf()).to.be.eql(_premiumCredited_Cu);
-    if (_premiumCharged_Cu_Ppt != null)         expect(_data[6].valueOf()).to.be.eql(_premiumCharged_Cu_Ppt);
-    if (_state != null)                         expect(_data[7].valueOf()).to.be.eql(_state);
-    if (_lastReconciliationDay != null)         expect(_data[8].valueOf()).to.be.eql(_lastReconciliationDay);
-    if (_nextReconciliationDay != null)         expect(_data[9].valueOf()).to.be.eql(_nextReconciliationDay);
+    if (_idx != null)                           expect(_data.idx.toNumber()).to.be.equal(_idx);
+    if (_owner != null)                         expect(_data.owner).to.be.equal(_owner);
+    if (_paymentAccountHash != null)            expect(_data.paymentAccountHash).to.be.equal(_paymentAccountHash);
+    if (_documentHash != null)                  expect(_data.documentHash).to.be.equal(_documentHash);
+    if (_riskPoints != null)                    expect(_data.riskPoints.toNumber()).to.be.equal(_riskPoints);
+    if (_premiumCredited_Cu != null)            expect(_data.premiumCredited_Cu.toNumber()).to.be.equal(_premiumCredited_Cu);
+    if (_premiumCharged_Cu_Ppt != null)         expect(_data.premiumCharged_Cu_Ppt.toNumber()).to.be.equal(_premiumCharged_Cu_Ppt);
+    if (_state != null)                         expect(_data.state.toNumber()).to.be.equal(_state);
+    if (_lastReconciliationDay != null)         expect(_data.lastReconciliationDay.toNumber()).to.be.equal(_lastReconciliationDay);
+    if (_nextReconciliationDay != null)         expect(_data.nextReconciliationDay.toNumber()).to.be.equal(_nextReconciliationDay);
 }
 
 // event LogPolicy(bytes32 indexed policyHash, address indexed owner, bytes32 indexed info, uint timestamp, uint state);
-exports.verifyPolicyLog = function(_tx, _idx, _policyHash, _owner, _info, _timestamp, _state)
+exports.verifyPolicyLog = function(_logs, _idx, _policyHash, _owner, _info, _timestamp, _state)
 {
-    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // Verify the provided log is a policy log with the name LogPolicy
+    expect("LogPolicy").to.be.equal(_logs[_idx].name);
+    // Verify the event was created by the correct contract
+    expect(td.policy.address).to.be.equal(_logs[_idx].address)
+
     // If a parameter has been provided verify it matches _data
-    if (_policyHash != null)            expect(_policyHash).to.be.equal(decodedLogs[_idx].events[0].value);
-    if (_owner != null)                 expect(_owner).to.be.equal(decodedLogs[_idx].events[1].value);
-    if (_info != null) {
-        if (parseInt(_info) > (Math.pow(10, 18)))
-            expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
-        else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
-    }
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
-    if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
+    if (_policyHash != null)        expect(_logs[_idx].events[0].value).to.be.equal(_policyHash);
+    if (_owner != null)             expect(web3.utils.toChecksumAddress(_logs[_idx].events[1].value)).to.be.equal(_owner);
+    if (_info != null)              expect(_logs[_idx].events[2].value).to.be.eql(_info);
+    if (_timestamp != null)         expect(Number(_logs[_idx].events[3].value)).to.be.equal(_timestamp);
+    if (_state != null)             expect(Number(_logs[_idx].events[4].value)).to.be.equal(_state);
     // Return the policyHash stored in the event log
-    return decodedLogs[_idx].events[0].value;
+    return _logs[_idx].events[0].value;
 }
-
-
 
 // Function verifies if the data in _data matches the other parameter if they are provided
 exports.verifyAdjustorData = function(_data, _idx, _owner, _settlementApprovalAmount_Cu, _policyRiskPointLimit, _serviceAgreement) 
 {
-    if (_idx != null)                           expect(_data[0].valueOf()).to.be.eql(_idx);
-    if (_owner != null)                         expect(_data[1].valueOf()).to.be.eql(_owner);
-    if (_settlementApprovalAmount_Cu != null)   expect(_data[2].valueOf()).to.be.eql(_settlementApprovalAmount_Cu);
-    if (_policyRiskPointLimit != null)          expect(_data[3].valueOf()).to.be.eql(_policyRiskPointLimit);
-    if (_serviceAgreement != null)              expect(_data[4].valueOf()).to.be.eql(_serviceAgreement);
+    if (_idx != null)                           expect(_data.idx.toNumber()).to.be.equal(_idx);
+    if (_owner != null)                         expect(_data.owner).to.be.equal(_owner);
+    if (_settlementApprovalAmount_Cu != null)   expect(_data.settlementApprovalAmount_Cu.toNumber()).to.be.equal(_settlementApprovalAmount_Cu);
+    if (_policyRiskPointLimit != null)          expect(_data.policyRiskPointLimit.toNumber()).to.be.equal(_policyRiskPointLimit);
+    if (_serviceAgreement != null)              expect(_data.serviceAgreementHash).to.be.equal(_serviceAgreement);
 }
 
 // event LogAdjustor(bytes32 indexed adjustorHash, address indexed owner, bytes32 indexed info, uint timestamp);
-exports.verifyAdjustorLog = function(_tx, _idx, _adjustorHash, _owner, _info, _timestamp)
+exports.verifyAdjustorLog = function(_logs, _idx, _adjustorHash, _owner, _info, _timestamp)
 {
-    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // Verify the provided log is an adjustor log with the name LogAdjustor
+    expect("LogAdjustor").to.be.equal(_logs[_idx].name);
+    // Verify the event was created by the correct contract
+    expect(td.adjustor.address).to.be.equal(_logs[_idx].address)
+
     // If a parameter has been provided verify it matches _data
-    if (_adjustorHash != null)          expect(_adjustorHash).to.be.equal(decodedLogs[_idx].events[0].value);
-    if (_owner != null)                 expect(_owner).to.be.equal(decodedLogs[_idx].events[1].value);
-    if (_info != null) {
-        if (parseInt(_info) > (Math.pow(10, 18)))
-            expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
-        else expect(parseInt(_info)).to.be.equal(parseInt(decodedLogs[_idx].events[2].value));
-    }
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
-    // Return the policyHash stored in the event log
-    return decodedLogs[_idx].events[0].value;
+    if (_adjustorHash != null)      expect(_logs[_idx].events[0].value).to.be.equal(_adjustorHash);
+    if (_owner != null)             expect(web3.utils.toChecksumAddress(_logs[_idx].events[1].value)).to.be.equal(_owner);
+    if (_info != null)              expect(_logs[_idx].events[2].value).to.be.eql(_info);
+    if (_timestamp != null)         expect(Number(_logs[_idx].events[3].value)).to.be.equal(_timestamp);
+    // Return the adjustor hash stored in the event log
+    return _logs[_idx].events[0].value;
 }
 
-
-
 // Function verifies if the data in _data matches the other parameter if they are provided
-exports.verifySettlementData = function(_data, _idx, _settlementAmount_Cu, _state) 
+exports.verifySettlementData = function(_data, _idx, _settlementAmount, _state) 
 {
-    if (_idx != null)                           expect(_data[0].valueOf()).to.be.eql(_idx);
-    if (_settlementAmount_Cu != null)           expect(_data[1].valueOf()).to.be.eql(_settlementAmount_Cu);
-    if (_state != null)                         expect(_data[2].valueOf()).to.be.eql(_state);
+    if (_idx != null)                   expect(_data.idx.toNumber()).to.be.equal(_idx);
+    if (_settlementAmount != null)      expect(_data.settlementAmount.toNumber()).to.be.equal(_settlementAmount);
+    if (_state != null)                 expect(_data.state.toNumber()).to.be.equal(_state);
 }
 
 // event LogSettlement(bytes32 indexed settlementHash, bytes32 indexed adjustorHash, bytes32 indexed info, uint timestamp, uint state);
-exports.verifySettlementLog = function(_tx, _idx, _settlementHash, _adjustorHash, _info, _timestamp, _state)
+exports.verifySettlementLog = function(_logs, _idx, _settlementHash, _adjustorHash, _info, _timestamp, _state)
 {
-    const decodedLogs = td.abiDecoder.decodeLogs(_tx.receipt.logs);
+    // Verify the provided log is a settlement log with the name LogSettlement
+    expect("LogSettlement").to.be.equal(_logs[_idx].name);
+    // Verify the event was created by the correct contract
+    expect(td.settlement.address).to.be.equal(_logs[_idx].address)
+
     // If a parameter has been provided verify it matches _data
-    if (_settlementHash != null)        expect(_settlementHash).to.be.equal(decodedLogs[_idx].events[0].value);
-    if (_adjustorHash != null)          expect(_adjustorHash).to.be.equal(decodedLogs[_idx].events[1].value);
-    if (_info != null)                  expect(_info).to.be.equal(decodedLogs[_idx].events[2].value);
-    if (_timestamp != null)             expect(parseInt(_timestamp)).to.be.equal(parseInt(decodedLogs[_idx].events[3].value));
-    if (_state != null)                 expect(parseInt(_state)).to.be.equal(parseInt(decodedLogs[_idx].events[4].value));
+    if (_settlementHash != null)        expect(_logs[_idx].events[0].value).to.be.equal(_settlementHash);
+    if (_adjustorHash != null)          expect(_logs[_idx].events[1].value).to.be.equal(_adjustorHash);
+    if (_info != null)                  expect(_logs[_idx].events[2].value).to.be.equal(_info);
+    if (_timestamp != null)             expect(Number(_logs[_idx].events[3].value)).to.be.equal(_timestamp);
+    if (_state != null)                 expect(Number(_logs[_idx].events[4].value)).to.be.equal(_state);
     // Return the settlementHash stored in the event log
-    return decodedLogs[_idx].events[0].value;
+    return _logs[_idx].events[0].value;
 }
