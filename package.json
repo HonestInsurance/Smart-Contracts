@@ -16,6 +16,7 @@
     "bignumber.js": "^6.0.0",
     "expect.js": "^0.3.1",
     "solc": "^0.5.0",
-    "truffle-hdwallet-provider": "^1.0.0-web3one.1"
+    "truffle-hdwallet-provider": "^1.0.0-web3one.1",
+    "web3": "^1.0.0-beta.36"
   }
 }

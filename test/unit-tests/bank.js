@@ -22,53 +22,57 @@ const utBank = require("../unit-tests/bank.js");
 async function processPaymentAdvice(_idx) {
     // Get the payment advice to be processed
     const paymentAdvice = await td.bank.bankPaymentAdvice(_idx);
+    
     // If this particular payment advice entry has already been processed return
-    if (paymentAdvice[3].valueOf() == 0)
+    if (paymentAdvice.amount.toNumber() == 0)
         return;
 
     // Increase the bank transaction idx
     td.bankTransactionIdx++;
     let expectedAccountType;
     // Extract the Account AccountType from the PaymentAdviceType
-    if ((paymentAdvice[0] == 0) || (paymentAdvice[0] == 1))
+    if ((paymentAdvice.adviceType.toNumber() == 0) || (paymentAdvice.adviceType.toNumber() == 1))
         expectedAccountType = 0;
-    else if ((paymentAdvice[0] == 2) || (paymentAdvice[0] == 3)) 
+    else if ((paymentAdvice.adviceType.toNumber() == 2) || (paymentAdvice.adviceType.toNumber() == 3)) 
         expectedAccountType = 1;
     else expectedAccountType = 2;
 
     // Process the payment
     const tx = await td.bank.processPaymentAdvice(_idx, td.bankTransactionIdx, {from: td.accounts[0]});
+    // Extract the decoded logs
+    const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
 
     // Verify the bank transaction event details
-    miscFunc.verifyBankLog(tx, 0, null, expectedAccountType, true, paymentAdvice[1],
-        paymentAdvice[2], null, null, 1, paymentAdvice[3]);
+    miscFunc.verifyBankLog(logs, 0, null, expectedAccountType, true, paymentAdvice.paymentAccountHashRecipient,
+        paymentAdvice.paymentSubject, null, null, 1, paymentAdvice.amount.toNumber());
 
     // If it is an internal payment execute the DEPOSIT transaction
-    if ((paymentAdvice[0] == 1) || (paymentAdvice[0] == 3)) {
+    if ((paymentAdvice.adviceType.toNumber() == 1) || (paymentAdvice.adviceType.toNumber() == 3)) {
         // Execute the deposit
-        const tx_deposit = await utBank.processAccountCredit(paymentAdvice[0].valueOf() == 1 ? 1 : 2,      // Account type
-                            paymentAdvice[0].valueOf() == 1 ? setupI.PREMIUM_ACCOUNT_PAYMENT_HASH : setupI.BOND_ACCOUNT_PAYMENT_HASH,      // Hash sender
-                            paymentAdvice[2],                   // Payment Subject 
-                            paymentAdvice[3].valueOf(),         // Amount
-                            true, 
-                            miscFunc.getBytes32FromAdr(td.pool.address), 
-                            '');
+        const logs = await utBank.processAccountCredit(
+            paymentAdvice.adviceType.toNumber() == 1 ? 1 : 2,      // Account type
+            paymentAdvice.adviceType.toNumber() == 1 ? setupI.PREMIUM_ACCOUNT_PAYMENT_HASH : setupI.BOND_ACCOUNT_PAYMENT_HASH,      // Hash sender
+            paymentAdvice.paymentSubject,            // Payment Subject 
+            paymentAdvice.amount.toNumber(),         // Amount
+            true,
+            web3.utils.padRight(web3.utils.toHex("Pool"), 64), 
+            '');
 
         // Adjust (WC_Bal_BA_Cu, WC_BAL_FA_CU)
-        if (paymentAdvice[0] == 1)
-            td.wc_bal_ba_cu = +td.wc_bal_ba_cu + +paymentAdvice[3].valueOf();
-        else td.wc_bal_fa_cu = +td.wc_bal_fa_cu + +paymentAdvice[3].valueOf();
+        if (paymentAdvice.adviceType.toNumber() == 1)
+            td.wc_bal_ba_cu = +td.wc_bal_ba_cu + +paymentAdvice.amount.toNumber();
+        else td.wc_bal_fa_cu = +td.wc_bal_fa_cu + +paymentAdvice.amount.toNumber();
         
         // Verify if WC_Bal_FA_Cu and WC_Bal_BA_Cu are correct
-        expect(td.wc_bal_ba_cu).to.be.eql((await td.pool.WC_Bal_BA_Cu()).valueOf());
-        expect(td.wc_bal_fa_cu).to.be.eql((await td.pool.WC_Bal_FA_Cu()).valueOf());
+        expect(td.wc_bal_ba_cu).to.be.eql((await td.pool.WC_Bal_BA_Cu()).toNumber());
+        expect(td.wc_bal_fa_cu).to.be.eql((await td.pool.WC_Bal_FA_Cu()).toNumber());
     }
 }
 
 // function processes all outstanding bank payment advice entries
 exports.processAllOutstandginPaymentAdvice = async () => {
     // Get the total number of payment advice entries
-    const count = (await td.bank.countPaymentAdviceEntries()).valueOf();
+    const count = (await td.bank.countPaymentAdviceEntries()).toNumber();
     // Run throught all potential outstanding paymend advice entries and submitt for processing
     for (let i=0; i<count; i++) {
         await processPaymentAdvice(i);
@@ -82,28 +86,30 @@ exports.processAccountCredit = async (_accountType, _paymentAccountHashSender, _
     // Process the deposit
     const tx = await td.bank.processAccountCredit(td.bankTransactionIdx, _accountType, _paymentAccountHashSender, 
         _paymentSubject, _bankCreditAmount_Cu, {from: td.accounts[0]});
+        // Extract the decoded logs
+    const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
        
     // Verify how many events were triggert (the bank transaction log events are always triggered last)
-    let eventIdx = tx.receipt.logs.length - 1;
+    let eventIdx = logs.length - 1;
     if (_expectedSuccess == false)
         eventIdx--;
 
     // Verify the bank transaction logs
-    miscFunc.verifyBankLog(tx, eventIdx, _expectedHash, _accountType, _expectedSuccess, _paymentAccountHashSender,
+    miscFunc.verifyBankLog(logs, eventIdx, _expectedHash, _accountType, _expectedSuccess, _paymentAccountHashSender,
         _paymentSubject, _expectedInfo, null, 0, _bankCreditAmount_Cu);
 
     if (_expectedSuccess == false) {
         // Increase the event Idx
         eventIdx++;
         // Check the event details of the refund operation
-        miscFunc.verifyBankLog(tx, eventIdx, null, _accountType, true, _paymentAccountHashSender,
+        miscFunc.verifyBankLog(logs, eventIdx, null, _accountType, true, _paymentAccountHashSender,
             _paymentSubject, _expectedInfo, null, 1, _bankCreditAmount_Cu);
     }
     
     // Verify the bank transaction flag for the specified transaction idx is set to true
     expect(true).to.be.eql(await td.bank.bankTransactionIdxProcessed(td.bankTransactionIdx));
     // Return the transaction result
-    return tx;
+    return logs;
 }
 
 // function processes a credit into the Funding account (i.e. a bond credit)
@@ -111,16 +117,15 @@ exports.bondPrincipalCredit = async (_bondHash) => {
     // Get the bond details
     const initialBondData = await td.bond.dataStorage(_bondHash);
     // Variable to store the bond principal
-    const bondPrincipal = initialBondData[3].valueOf();
+    const bondPrincipal = initialBondData.principal_Cu.toNumber();
     // Variable to store the final bond yield (if applicable)
     let finalBondYield = 0;
 
     // Process the bank deposit
-    const tx = await utBank.processAccountCredit(2, web3.sha3(_bondHash), _bondHash, bondPrincipal, true, _bondHash, '');
+    const logs = await utBank.processAccountCredit(2, web3.utils.sha3(_bondHash), _bondHash, bondPrincipal, true, _bondHash, '');
     
-    var eventIdx = 0;
     // If bond was in a created state => Calculate the final bond yield, update pool variables and check event info
-    if (initialBondData[9] == 0) {
+    if (initialBondData.state.toNumber() == 0) {
         // Calcuate the expected yield average
         const yieldAvg = Math.floor((td.b_gradient_ppq * bondPrincipal) / (2 * (Math.pow(10, 6))));
         // Calculate the final and expected bond yield
@@ -132,23 +137,23 @@ exports.bondPrincipalCredit = async (_bondHash) => {
         td.wc_bond_cu = +td.wc_bond_cu - +bondPrincipal;
 
         // Event 0 - Bond is secured with Bond Principal
-        miscFunc.verifyBondLog(tx, 0, _bondHash, initialBondData[1], bondPrincipal, null, 1);
+        miscFunc.verifyBondLog(logs, 0, _bondHash, initialBondData.owner, bondPrincipal, null, 1);
         // Event 1 - Bond signing
-        miscFunc.verifyBondLog(tx, 1, _bondHash, initialBondData[1], finalBondYield, null, 3);
+        miscFunc.verifyBondLog(logs, 1, _bondHash, initialBondData.owner, finalBondYield, null, 3);
         // Event 2 - Bond active
-        miscFunc.verifyBondLog(tx, 2, _bondHash, initialBondData[1], initialBondData[8], null, 4);
+        miscFunc.verifyBondLog(logs, 2, _bondHash, initialBondData.owner, initialBondData.maturityDate.toNumber(), null, 4);
     }
     else {
         // If bond was SecuredReferenceBond (was in a Signed state before the bank transaction) the security bond event need to be verified
         // Event 0 - Bond that is providing the underwriting is active again
-        miscFunc.verifyBondLog(tx, 0, initialBondData[10], initialBondData[1], null, null, 4);
+        miscFunc.verifyBondLog(logs, 0, initialBondData.securityReferenceHash, initialBondData.owner, null, null, 4);
         // Event 2 - Bond active
-        miscFunc.verifyBondLog(tx, 1, _bondHash, initialBondData[1], initialBondData[8], null, 4);
+        miscFunc.verifyBondLog(logs, 1, _bondHash, initialBondData.owner, initialBondData.maturityDate.toNumber(), null, 4);
         
         // Reduce WC_Transit_Cu as bond was secured by another bond
         td.wc_transit_cu = +td.wc_transit_cu - +bondPrincipal;
         // Safe the final bond yield
-        finalBondYield = initialBondData[4].valueOf();
+        finalBondYield = initialBondData.yield_Ppb.toNumber();
     }
     
     // Adjust WC_Bal_FA_Cu
@@ -167,17 +172,16 @@ exports.bondPrincipalCredit = async (_bondHash) => {
 
     // Call the function to verify all bond data
     await miscFunc.verifyBondData(await td.bond.dataStorage(_bondHash), null, null, 
-        null, null, finalBondYield, maturityPayoutAmount, null, null, null, 4, 0x0);
+        null, null, finalBondYield, maturityPayoutAmount, null, null, null, 4, miscFunc.getEmptyHash());
 
     // Verify if WC_Bal_FA_Cu and WC_Transit are correct
-    expect(td.wc_bal_fa_cu).to.be.eql((await td.pool.WC_Bal_FA_Cu()).valueOf());
-    expect(td.wc_transit_cu).to.be.eql((await td.pool.WC_Transit_Cu()).valueOf());
+    expect(td.wc_bal_fa_cu).to.be.eql((await td.pool.WC_Bal_FA_Cu()).toNumber());
+    expect(td.wc_transit_cu).to.be.eql((await td.pool.WC_Transit_Cu()).toNumber());
     
     // Get the bond data of the securing bond if applicable (bond was in signed state)
-    if (initialBondData[9] == 3) {
-        return td.bond.dataStorage.call(initialBondData[10]);
+    if (initialBondData.state.toNumber() == 3) {
         // The state of the underwriting bond needs to be Issued (4) and reference to bond needs to be removed 0x0
-        return miscFunc.verifyBondData((await td.bond.dataStorage(initialBondData[10])), null, null, null, null, null, null, null, null, null, 4, 0x0);
+        await miscFunc.verifyBondData((await td.bond.dataStorage(initialBondData.securityReferenceHash)), null, null, null, null, null, null, null, null, null, 4, miscFunc.getEmptyHash());
     }
 }
 
@@ -185,51 +189,51 @@ exports.bondPrincipalCredit = async (_bondHash) => {
 exports.policyPremiumCredit = async (_policyHash, _amount_cu) => {
     // Save the policy data
     let initialPolicyData = await td.policy.dataStorage(_policyHash);
+    
     // Get the current total policy risk points
-    td.totalRiskPoints = (await td.policy.totalIssuedPolicyRiskPoints()).valueOf();
+    td.totalRiskPoints = (await td.policy.totalIssuedPolicyRiskPoints()).toNumber();
 
     // Process the bank deposit
-    const tx = await utBank.processAccountCredit(0, web3.sha3(_policyHash), _policyHash, _amount_cu, true, _policyHash, '');
-    
-    let eventIdx = 0;
+    const logs = await utBank.processAccountCredit(0, web3.utils.sha3(_policyHash), _policyHash, _amount_cu, true, _policyHash, '');
+
     // Adjust WC_Bal_PA_Cu
     td.wc_bal_pa_cu = +td.wc_bal_pa_cu + +_amount_cu;
     
     // If the policy is in a paused state and this is the first ever credit to this policy
-    if ((initialPolicyData[7].valueOf() == 0) &&  (initialPolicyData[5].valueOf() == 0)) {
+    if ((initialPolicyData.state.toNumber() == 0) &&  (initialPolicyData.premiumCredited_Cu.toNumber() == 0)) {
         // Verify the policy event log
-        miscFunc.verifyPolicyLog(tx, 0, _policyHash, initialPolicyData[1], miscFunc.getEmptyHash(), null, 1);
+        miscFunc.verifyPolicyLog(logs, 0, _policyHash, initialPolicyData.owner, miscFunc.getEmptyHash(), null, 1);
         // Add the risk points
-        td.totalRiskPoints = +td.totalRiskPoints + +initialPolicyData[4].valueOf();
+        td.totalRiskPoints = +td.totalRiskPoints + +initialPolicyData.riskPoints.toNumber();
         // Change the expected policy's state to issued (1)
-        initialPolicyData[7] = 1;
+        initialPolicyData.state = 1;
         // Change the last reconciliation day to today
-        initialPolicyData[8] = td.currentPoolDay;
+        initialPolicyData.lastReconciliationDay = td.currentPoolDay;
     }
     // If the state of the Policy was Lapsed
-    if (initialPolicyData[7].valueOf() == 2) {
+    else if (initialPolicyData.state.toNumber() == 2) {
         // Verify the policy event log
-        miscFunc.verifyPolicyLog(tx, 0, _policyHash, initialPolicyData[1], miscFunc.getEmptyHash(), null, 3);
+        miscFunc.verifyPolicyLog(logs, 0, _policyHash, initialPolicyData[1], miscFunc.getEmptyHash(), null, 3);
         // Change the expected policy's state to post lapsed (3)
-        initialPolicyData[7] = 3;
+        initialPolicyData.state = 3;
         // Change the last reconciliation day to today
-        initialPolicyData[8] = td.currentPoolDay;
+        initialPolicyData.lastReconciliationDay = td.currentPoolDay;
     }
 
     // If the state of the Policy is Issued
-    if (initialPolicyData[7].valueOf() == 1) {
+    if (Number(initialPolicyData.state) == 1) {
         // Change the last reconciliation day to today
-        initialPolicyData[8] = td.currentPoolDay;
+        initialPolicyData.lastReconciliationDay = td.currentPoolDay;
     }
 
     // Adjust the premiumDeposited amount
-    initialPolicyData[5] = +initialPolicyData[5].valueOf() + +_amount_cu;
+    initialPolicyData.premiumCredited_Cu = +initialPolicyData.premiumCredited_Cu.toNumber() + +_amount_cu;
 
     // Verify the new policy data
-    return miscFunc.verifyPolicyData((await td.policy.dataStorage(_policyHash)), initialPolicyData[0].valueOf(), initialPolicyData[1], null, null, initialPolicyData[4].valueOf(), 
-        initialPolicyData[5].valueOf(), null, initialPolicyData[7].valueOf(), initialPolicyData[8].valueOf(), null);
+    miscFunc.verifyPolicyData((await td.policy.dataStorage(_policyHash)), initialPolicyData.idx.toNumber(), initialPolicyData.owner, null, null, initialPolicyData.riskPoints.toNumber(), 
+        Number(initialPolicyData.premiumCredited_Cu), null, Number(initialPolicyData.state), Number(initialPolicyData.lastReconciliationDay), null);
 
     // Verify the new balance for wc_bal_pa_cu in pool is valid and the total number of Risk points in the policy contract is correct
-    expect(td.wc_bal_pa_cu).to.be.eql((await td.pool.WC_Bal_PA_Cu()).valueOf());
-    expect(td.totalRiskPoints).to.be.eql((await td.policy.totalIssuedPolicyRiskPoints()).valueOf());
+    expect(td.wc_bal_pa_cu).to.be.eql((await td.pool.WC_Bal_PA_Cu()).toNumber());
+    expect(td.totalRiskPoints).to.be.eql((await td.policy.totalIssuedPolicyRiskPoints()).toNumber());
 }

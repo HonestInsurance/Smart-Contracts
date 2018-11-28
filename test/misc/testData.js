@@ -5,6 +5,7 @@
  * @license GPL-3.0
  */
 
+
 // Store the pre-loaded accounts that hold ether for submitting transactions
 exports.accounts;
 

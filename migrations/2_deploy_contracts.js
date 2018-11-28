@@ -10,6 +10,8 @@ const td = require("../test/misc/testData.js");
 const txFunc = require("../test/misc/txFunc.js");
 const abiDecoder = require('abi-decoder');
 const miscFunc = require("../test/misc/miscFunc.js");
+const trufflejs = require("../truffle.js");
+const web3js = require('web3');
 
 // Load the artifacts of the contracts that are deployed
 const abiLib = artifacts.require("./Lib.sol");
@@ -95,7 +97,7 @@ module.exports = async (deployer, network, accounts) => {
             // Save the current day
             td.currentPoolDay = (await td.pool.currentPoolDay()).toNumber();
             // Save the initial overnight processing timestamp
-            td.nextOvernightProcessingTimestamp = td.abiDecoder.decodeLogs(tx.receipt.rawLogs)[8].events[2].value;
+            td.nextOvernightProcessingTimestamp = Number(td.abiDecoder.decodeLogs(tx.receipt.rawLogs)[8].events[2].value);
         }        
         
         
