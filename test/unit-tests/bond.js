@@ -22,19 +22,22 @@ exports.createBond = async (_bondPrincipal, _hashOfReferenceBond, _bondOwnerAcco
     const bondHashMapInfo = await td.bond.hashMap();
     // Create a new Bond
     const tx = await td.bond.createBond(_bondPrincipal, _hashOfReferenceBond, {from: td.accounts[_bondOwnerAccountIdx]});
+    // Extract the decoded logs
+    const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
+
     // Get the bond hash
-    const bondHash = miscFunc.verifyBondLog(tx, 0);
+    const bondHash = miscFunc.verifyBondLog(logs, 0);
     // Save the bond hash
-    td.bHash[bondHashMapInfo[1].valueOf()] = bondHash;
+    td.bHash[bondHashMapInfo.nextIdx.toNumber()] = bondHash;
 
     // Event 0 - Bond creation
-    miscFunc.verifyBondLog(tx, 0, bondHash, td.accounts[_bondOwnerAccountIdx], _bondPrincipal, null, 0);
+    miscFunc.verifyBondLog(logs, 0, bondHash, td.accounts[_bondOwnerAccountIdx], _bondPrincipal, null, 0);
         
     // If bond has been only created
-    if (_hashOfReferenceBond == 0x0) {
+    if (_hashOfReferenceBond == miscFunc.getEmptyHash()) {
         // Call the function to verify all bond data of the newly created bond
-        await miscFunc.verifyBondData(await td.bond.dataStorage(bondHash), bondHashMapInfo[1].valueOf(), td.accounts[_bondOwnerAccountIdx], 
-            null, _bondPrincipal, 0, null, null, null, null, 0, 0x0);
+        await miscFunc.verifyBondData(await td.bond.dataStorage(bondHash), bondHashMapInfo.nextIdx.toNumber(), td.accounts[_bondOwnerAccountIdx], 
+            null, _bondPrincipal, 0, null, null, null, null, 0, miscFunc.getEmptyHash());
     } 
     //  Bond has also been secured by another bond and signed check the log files
     else {
@@ -52,14 +55,14 @@ exports.createBond = async (_bondPrincipal, _hashOfReferenceBond, _bondOwnerAcco
         td.wc_transit_cu = +td.wc_transit_cu + +_bondPrincipal;
 
         // Event 1 - Bond that is performing the securing service
-        miscFunc.verifyBondLog(tx, 1, _hashOfReferenceBond, td.accounts[_bondOwnerAccountIdx], bondHash, null, 5);
+        miscFunc.verifyBondLog(logs, 1, _hashOfReferenceBond, td.accounts[_bondOwnerAccountIdx], bondHash, null, 5);
         // Event 2 - Bond that is secured
-        miscFunc.verifyBondLog(tx, 2, bondHash, td.accounts[_bondOwnerAccountIdx], _hashOfReferenceBond, null, 2); 
+        miscFunc.verifyBondLog(logs, 2, bondHash, td.accounts[_bondOwnerAccountIdx], _hashOfReferenceBond, null, 2); 
         // Event 3 - Bond signing
-        miscFunc.verifyBondLog(tx, 3, bondHash, td.accounts[_bondOwnerAccountIdx], finalBondYield, null, 3);
+        miscFunc.verifyBondLog(logs, 3, bondHash, td.accounts[_bondOwnerAccountIdx], finalBondYield, null, 3);
         
         // Call the function to verify all bond data of the newly created bond
-        await miscFunc.verifyBondData(await td.bond.dataStorage(bondHash), bondHashMapInfo[1].valueOf(), td.accounts[_bondOwnerAccountIdx], 
+        await miscFunc.verifyBondData(await td.bond.dataStorage(bondHash), bondHashMapInfo.nextIdx.toNumber(), td.accounts[_bondOwnerAccountIdx], 
             null, _bondPrincipal, finalBondYield, null, null, null, null, 3, _hashOfReferenceBond);
 
         // Call the function to verify all bond data of the bond that provided the underwriting
@@ -71,11 +74,11 @@ exports.createBond = async (_bondPrincipal, _hashOfReferenceBond, _bondOwnerAcco
     miscFunc.verifyHashMap(bondHashMapInfo, await td.bond.hashMap(), true);
     
     // Verify the new pool yield
-    expect((await td.pool.B_Yield_Ppb()).valueOf()).to.be.eql(td.b_yield_ppb);
+    expect((await td.pool.B_Yield_Ppb()).toNumber()).to.be.equal(td.b_yield_ppb);
     // Verify new value for wc bond
-    expect((await td.pool.WC_Bond_Cu()).valueOf()).to.be.eql(td.wc_bond_cu);
+    expect((await td.pool.WC_Bond_Cu()).toNumber()).to.be.equal(td.wc_bond_cu);
     // Verify new value for wc transit
-    expect((await td.pool.WC_Transit_Cu()).valueOf()).to.be.eql(td.wc_transit_cu);
+    expect((await td.pool.WC_Transit_Cu()).toNumber()).to.be.equal(td.wc_transit_cu);
 }
 
 // processMaturedBond(bytes32 _bondHash, uint _scheduledDateTime)
@@ -83,12 +86,12 @@ exports.processMaturedBond = async (_bondHash) => {
     // Store the hash map info for now
     const bondHashMapInfo = await td.bond.hashMap();
     // Get the payment advice details
-    const nextBankPaymentAdvice = (await td.bank.countPaymentAdviceEntries()).valueOf();
+    const nextBankPaymentAdvice = (await td.bank.countPaymentAdviceEntries()).toNumber();
     // Retrieve the initial bond data
     const initialBondData = await td.bond.dataStorage(_bondHash);
     
-    let bondPayoutAmount = initialBondData[5].valueOf();
-    let bondInitialState = initialBondData[9].valueOf();;
+    let bondPayoutAmount = initialBondData.maturityPayoutAmount_Cu.toNumber();
+    let bondInitialState = initialBondData.state.toNumber();;
     let bondFinalState = 7;         // Matured
 
     // If bond is not in an active state set the final state to defaulted
@@ -98,14 +101,14 @@ exports.processMaturedBond = async (_bondHash) => {
     // If bond is in signed state reduce wc_transit_cu by the expeced amount
     if (bondInitialState == 3) {
         //Transit -= Bond Principal - Bond Deposited amount;
-        td.wc_transit_cu -= +initialBondData[3].valueOf();
+        td.wc_transit_cu -= +initialBondData.principal_Cu.toNumber();
     }
 
     // Get the details of the bond that was underwritten with this bond
     if (bondInitialState == 5) {
-        const securityReferenceBond = await td.bond.dataStorage(initialBondData[10]);
+        const securityReferenceBond = await td.bond.dataStorage(initialBondData.securityReferenceHash);
         // Reduce the bond payout amount accordingly
-        bondPayoutAmount -= ((+securityReferenceBond[3].valueOf() * +setupI.BOND_REQUIRED_SECURITY_REFERENCE_PPT) / Math.pow(10, 3));
+        bondPayoutAmount -= ((+securityReferenceBond.principal_Cu.toNumber() * +setupI.BOND_REQUIRED_SECURITY_REFERENCE_PPT) / Math.pow(10, 3));
     }
 
     // Adjust wc_bal_ba_cu
@@ -113,23 +116,25 @@ exports.processMaturedBond = async (_bondHash) => {
         
     // Process the matured bond
     const tx = await td.timer.manualPing(td.bond.address, 0, _bondHash, td.futureEpochTimeStamp, {from: td.accounts[0]});
+    // Extract the decoded logs
+    const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
 
     // Check the bond event details
-    miscFunc.verifyBondLog(tx, 0, _bondHash, initialBondData[1], bondPayoutAmount, null, bondFinalState);
+    miscFunc.verifyBondLog(logs, 0, _bondHash, initialBondData.owner, bondPayoutAmount, null, bondFinalState);
     
     // If the payout amount is greater than 0 ensure a payment advice entry has been created
     if (bondPayoutAmount > 0) {
         // Verify if the newly created bank payment advice entry details are correct
         const paymentAdvice = await td.bank.bankPaymentAdvice(nextBankPaymentAdvice);
         // Verify the details of the newly created bank payment advice entry
-        expect(2).to.be.eql(paymentAdvice[0].valueOf());
-        expect(web3.sha3(_bondHash)).to.be.eql(paymentAdvice[1].valueOf());
-        expect(_bondHash).to.be.eql(paymentAdvice[2].valueOf());
-        expect(bondPayoutAmount).to.be.eql(paymentAdvice[3].valueOf());
+        expect(2).to.be.equal(paymentAdvice.adviceType.toNumber());
+        expect(web3.utils.sha3(_bondHash)).to.be.equal(paymentAdvice.paymentAccountHashRecipient);
+        expect(_bondHash).to.be.equal(paymentAdvice.paymentSubject);
+        expect(bondPayoutAmount).to.be.equal(paymentAdvice.amount.toNumber());
     }
     else {
         // If payout amount is 0 ensure no new payment advice entry has been created
-        expect(nextBankPaymentAdvice).to.be.eql((await td.bank.countPaymentAdviceEntries()).valueOf()); 
+        expect(nextBankPaymentAdvice).to.be.equal((await td.bank.countPaymentAdviceEntries()).toNumber()); 
     }
 
     // Verify the bond data
@@ -139,7 +144,7 @@ exports.processMaturedBond = async (_bondHash) => {
     miscFunc.verifyHashMap(bondHashMapInfo, await td.bond.hashMap(), false);
 
     // Verify new value for wc bond
-    expect((await td.pool.WC_Bal_BA_Cu()).valueOf()).to.be.eql(td.wc_bal_ba_cu);
+    expect((await td.pool.WC_Bal_BA_Cu()).toNumber()).to.be.equal(td.wc_bal_ba_cu);
     // Verify new value for wc transit
-    expect((await td.pool.WC_Transit_Cu()).valueOf()).to.be.eql(td.wc_transit_cu);
+    expect((await td.pool.WC_Transit_Cu()).toNumber()).to.be.equal(td.wc_transit_cu);
 }

@@ -47,14 +47,17 @@ exports.adjustDaylightSaving = async () => {
     const isWinterTime = await td.pool.isWinterTime();
     // Change the summer winter time
     const tx = await td.trust.adjustDaylightSaving({from: td.accounts[0]});
+    // Extract the decoded logs
+    const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
+
     
     // Verify the log entries in the pool
     if (isWinterTime == true)
-        miscFunc.verifyPoolLog(tx, 0, 'ChangeToSummerTime', td.currentPoolDay, 0, null);
-    else miscFunc.verifyPoolLog(tx, 0, 'ChangeToWinterTime', td.currentPoolDay, 0, null);
+        miscFunc.verifyPoolLog(logs, 0, 'ChangeToSummerTime', td.currentPoolDay, 0, null);
+    else miscFunc.verifyPoolLog(logs, 0, 'ChangeToWinterTime', td.currentPoolDay, 0, null);
 
     // Verify the trust log entry
-    miscFunc.verifyTrustLog(tx, 1, 'ChangeInDaylightSaving', td.accounts[0], miscFunc.getEmptyHash(), null);
+    miscFunc.verifyTrustLog(logs, 1, 'ChangeInDaylightSaving', td.accounts[0], miscFunc.getEmptyHash(), null);
 
     // Verify the log entries in the pool
     expect(await td.pool.daylightSavingScheduled()).to.be(true);

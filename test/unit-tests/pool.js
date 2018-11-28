@@ -6,6 +6,7 @@
  */
 
 // Load the java script files to access their functions
+const web3js = require('web3');
 const expect = require('expect.js');
 const bn = require('bignumber.js');
 const miscFunc = require("../misc/miscFunc.js");
@@ -41,17 +42,24 @@ exports.setWcExpenses = async (_wcExpensesPerDay_Cu) => {
 
 // dailyOvernightProcessing()
 exports.dailyOvernightProcessing = async () => {
+
     // Accellerate the blockchain time to midnight + setupI.POOL_DAILY_PROCESSING_OFFSET_SEC
-    const advanceTime = +td.nextOvernightProcessingTimestamp + 
-        +setupI.POOL_DAILY_PROCESSING_OFFSET_SEC - 
-        +web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    const advanceTime = td.nextOvernightProcessingTimestamp + 
+        setupI.POOL_DAILY_PROCESSING_OFFSET_SEC -
+        ((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp);
     // Call the blockchain to advance time
-    web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [advanceTime], id: 0});
+    web3.currentProvider.send({jsonrpc: '2.0', method: 'evm_increaseTime', params: [advanceTime], id: 0}, () => { 
+        // Mine another block
+        web3.currentProvider.send({jsonrpc: '2.0', method: 'evm_mine', params: [], id: 0}, () => { })
+    });
+
+    // Sleep for a 100 milli seconds to ensure the advancing of the time and mining of another block has been completed
+    await miscFunc.sleep(100);
 
     // Get the value for wc expenses
-    td.wc_exp_cu = (await td.pool.WC_Exp_Cu()).valueOf();
+    td.wc_exp_cu = (await td.pool.WC_Exp_Cu()).toNumber();
     // Get the yield before the processing and ensure it is at least the MIN YIELD value
-    td.b_yield_ppb = Math.max((await td.pool.B_Yield_Ppb()).valueOf(), setupI.MIN_YIELD_PPB);
+    td.b_yield_ppb = Math.max((await td.pool.B_Yield_Ppb()).toNumber(), setupI.MIN_YIELD_PPB);
     
     // Set the next overnight processing (if it is daylight saving change nextOvernightProcessingTimestamp will be adjusted in the corresponding test function)
     td.nextOvernightProcessingTimestamp = +td.nextOvernightProcessingTimestamp + 86400;
@@ -68,11 +76,11 @@ exports.dailyOvernightProcessing = async () => {
     // Value to save overwriteWcExpenses
     const overwriteWcExpenses = await td.pool.overwriteWcExpenses();
     // Get the count of the existing payment advice entries
-    const firstOvernightPaymentAdviceEntryIdx = (await td.bank.countPaymentAdviceEntries()).valueOf();
+    const firstOvernightPaymentAdviceEntryIdx = (await td.bank.countPaymentAdviceEntries()).toNumber();
     // Get the premium per risk point for yesterday
-    const premium_yesterday_Cu = Math.floor(((await td.policy.premiumPerRiskPoint_Cu_Ppm(yesterdayPoolDay, 0)).valueOf()) * td.totalRiskPoints / Math.pow(10, 6));
+    const premium_yesterday_Cu = Math.floor(((await td.policy.premiumPerRiskPoint_Cu_Ppm(yesterdayPoolDay, 0)).toNumber()) * td.totalRiskPoints / Math.pow(10, 6));
     // Get the bank payments tracking value
-    let bankPaymentsTracking = (await td.bank.fundingAccountPaymentsTracking_Cu()).valueOf();
+    let bankPaymentsTracking = (await td.bank.fundingAccountPaymentsTracking_Cu()).toNumber();
 
     // Variables to store payment info
     let processingTrustAmount_Cu = 0;
@@ -82,7 +90,9 @@ exports.dailyOvernightProcessing = async () => {
     let newPaymentAdviceEntries = 0;
     
     // Initiate overnight processing of the pool
-    const tx = await td.timer.manualPing(td.pool.address, 1, 0x0, 0, {from: td.accounts[0]});
+    const tx = await td.timer.manualPing(td.pool.address, 1, miscFunc.getEmptyAdr(), 0, {from: td.accounts[0]});
+    // Extract the decoded logs
+    const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
 
     // *** Adjust bank account balances if premium yesterday was paid
     if (premium_yesterday_Cu > 0) {
@@ -180,85 +190,92 @@ exports.dailyOvernightProcessing = async () => {
     // 6 LogPool(bytes32("PremiumPerRiskPointPpm"), address(currentPoolDay), bytes32(premiumPerRiskPoint_Cu_Ppm[currentPoolDay]), now);
 
     // Check the events for yesterday pool day
-    miscFunc.verifyPoolLog(tx, 0, 'TotalRiskPoints', yesterdayPoolDay, td.totalRiskPoints, null);
-    miscFunc.verifyPoolLog(tx, 1, 'PremiumCu', yesterdayPoolDay, premium_yesterday_Cu, null);
+    miscFunc.verifyPoolLog(logs, 0, 'TotalRiskPoints', yesterdayPoolDay, td.totalRiskPoints, null);
+    miscFunc.verifyPoolLog(logs, 1, 'PremiumCu', yesterdayPoolDay, premium_yesterday_Cu, null);
 
     let nextLogIdx = 2;
     // If overflow event was triggered check event
     if (processingOverflowAmount_Cu > 0) {
-        miscFunc.verifyPoolLog(tx, 2, 'OverflowCu', yesterdayPoolDay, processingOverflowAmount_Cu, null);
+        miscFunc.verifyPoolLog(logs, 2, 'OverflowCu', yesterdayPoolDay, processingOverflowAmount_Cu, null);
         nextLogIdx = 3;
     }
     
     // Verify the event logs that were created as for today pool day
-    miscFunc.verifyPoolLog(tx, +nextLogIdx + 0, 'WcExpenseForecastCu', td.currentPoolDay, td.wc_exp_cu, null);
-    miscFunc.verifyPoolLog(tx, +nextLogIdx + 1, 'WcBondCu', td.currentPoolDay, td.wc_bond_cu, null);
-    miscFunc.verifyPoolLog(tx, +nextLogIdx + 2, 'BondGradientPpq', td.currentPoolDay, td.b_gradient_ppq, null);
-    miscFunc.verifyPoolLog(tx, +nextLogIdx + 3, 'BondYieldPpb', td.currentPoolDay, td.b_yield_ppb, null);
-    miscFunc.verifyPoolLog(tx, +nextLogIdx + 4, 'BondPayoutNext3DaysCu', td.currentPoolDay, bondMaturityPayoutAmountNext3Days_Cu, null);
-    miscFunc.verifyPoolLog(tx, +nextLogIdx + 5, 'BondPayoutFutureCu', td.currentPoolDay, bondMaturityPayoutFuturePerDay_Cu, null);
-    miscFunc.verifyPoolLog(tx, +nextLogIdx + 6, 'PremiumPerRiskPointPpm', td.currentPoolDay, premiumPerRiskPoint_Cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 0, 'WcExpenseForecastCu', td.currentPoolDay, td.wc_exp_cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 1, 'WcBondCu', td.currentPoolDay, td.wc_bond_cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 2, 'BondGradientPpq', td.currentPoolDay, td.b_gradient_ppq, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 3, 'BondYieldPpb', td.currentPoolDay, td.b_yield_ppb, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 4, 'BondPayoutNext3DaysCu', td.currentPoolDay, bondMaturityPayoutAmountNext3Days_Cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 5, 'BondPayoutFutureCu', td.currentPoolDay, bondMaturityPayoutFuturePerDay_Cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 6, 'PremiumPerRiskPointPpm', td.currentPoolDay, premiumPerRiskPoint_Cu, null);
 
     // Verify current pool day is still 'yesterday' and has not changed
-    expect(td.currentPoolDay).to.be.eql((await td.pool.currentPoolDay()).valueOf());
+    expect(td.currentPoolDay).to.be.equal((await td.pool.currentPoolDay()).toNumber());
     // Verify overwrite WC expenses is now set to false
-    expect(false).to.be.eql(td.pool.overwriteWcExpenses());
+    expect(false).to.be.equal(await td.pool.overwriteWcExpenses());
     // Verify premium account, bond account and funding account balances are correct
-    expect(td.wc_bal_pa_cu).to.be.eql((await td.pool.WC_Bal_PA_Cu()).valueOf());
-    expect(td.wc_bal_ba_cu).to.be.eql((await td.pool.WC_Bal_BA_Cu()).valueOf());
-    expect(td.wc_bal_fa_cu).to.be.eql((await td.pool.WC_Bal_FA_Cu()).valueOf());
+    expect(td.wc_bal_pa_cu).to.be.equal((await td.pool.WC_Bal_PA_Cu()).toNumber());
+    expect(td.wc_bal_ba_cu).to.be.equal((await td.pool.WC_Bal_BA_Cu()).toNumber());
+    expect(td.wc_bal_fa_cu).to.be.equal((await td.pool.WC_Bal_FA_Cu()).toNumber());
 
     // Verify the correct number of new payment advice entries have been created
-    expect(+newPaymentAdviceEntries + +firstOvernightPaymentAdviceEntryIdx).to.be.eql((await td.bank.countPaymentAdviceEntries()).valueOf());
+    expect(+newPaymentAdviceEntries + +firstOvernightPaymentAdviceEntryIdx).to.be.equal((await td.bank.countPaymentAdviceEntries()).toNumber());
 
     // Verify the first payment advice (premium payment)
     if (newPaymentAdviceEntries >= 1) {
         let paymentAdvice = await td.bank.bankPaymentAdvice(firstOvernightPaymentAdviceEntryIdx);
-        expect(1).to.be.eql(paymentAdvice[0].valueOf()); // "Premium payment advice type incorrect");
-        expect(setupI.BOND_ACCOUNT_PAYMENT_HASH).to.be.eql(paymentAdvice[1].valueOf()); // "Premium payment hash recipient incorrect");
-        expect(yesterdayPoolDay).to.be.eql(paymentAdvice[2].valueOf()); // "Premium payment reference incorrect");
-        expect(premium_yesterday_Cu).to.be.eql(paymentAdvice[3].valueOf()); // "Premium payment amount incorrect");
+        expect(1).to.be.equal(paymentAdvice.adviceType.toNumber()); // "Premium payment advice type incorrect");
+        expect(setupI.BOND_ACCOUNT_PAYMENT_HASH).to.be.equal(paymentAdvice.paymentAccountHashRecipient); // "Premium payment hash recipient incorrect");
+        expect(yesterdayPoolDay).to.be.equal(bn.BigNumber(paymentAdvice.paymentSubject).toNumber()); // "Premium payment reference incorrect");
+        expect(premium_yesterday_Cu).to.be.equal(paymentAdvice.amount.toNumber()); // "Premium payment amount incorrect");
     }
     // Verify the second payment advice (trust payment)
     if (newPaymentAdviceEntries >= 2) {
         let paymentAdvice = await td.bank.bankPaymentAdvice(+firstOvernightPaymentAdviceEntryIdx + 1);
-        expect(6).to.be.eql(paymentAdvice[0].valueOf()); // "Trust payment advice type incorrect");
-        expect(setupI.TRUST_ACCOUNT_PAYMENT_HASH).to.be.eql(paymentAdvice[1].valueOf()); // "Trust payment hash recipient incorrect");
-        expect(yesterdayPoolDay).to.be.eql(paymentAdvice[2].valueOf()); // "Trust payment reference incorrect");
-        expect(processingTrustAmount_Cu).to.be.eql(paymentAdvice[3].valueOf()); // "Trust payment amount incorrect");
+        expect(6).to.be.equal(paymentAdvice.adviceType.toNumber()); // "Trust payment advice type incorrect");
+        expect(setupI.TRUST_ACCOUNT_PAYMENT_HASH).to.be.equal(paymentAdvice.paymentAccountHashRecipient); // "Trust payment hash recipient incorrect");
+        expect(yesterdayPoolDay).to.be.equal(bn.BigNumber(paymentAdvice.paymentSubject).toNumber()); // "Trust payment reference incorrect");
+        expect(processingTrustAmount_Cu).to.be.equal(paymentAdvice.amount.toNumber()); // "Trust payment amount incorrect");
     }
     // Verify the third payment advice (pool operator payment)
     if (newPaymentAdviceEntries >= 3) {
         let paymentAdvice = await td.bank.bankPaymentAdvice(+firstOvernightPaymentAdviceEntryIdx + 2);
-        expect(4).to.be.eql(paymentAdvice[0].valueOf()); // "Pool operator payment advice type incorrect");
-        expect(setupI.OPERATOR_ACCOUNT_PAYMENT_HASH).to.be.eql(paymentAdvice[1].valueOf()); // "Pool operator payment hash recipient incorrect");
-        expect(yesterdayPoolDay).to.be.eql(paymentAdvice[2].valueOf()); // "Pool operator payment reference incorrect");
-        expect(processingPoolOperatorsAmount_Cu).to.be.eql(paymentAdvice[3].valueOf()); // "Pool operator payment amount incorrect");
+        expect(4).to.be.equal(paymentAdvice.adviceType.toNumber()); // "Pool operator payment advice type incorrect");
+        expect(setupI.OPERATOR_ACCOUNT_PAYMENT_HASH).to.be.equal(paymentAdvice.paymentAccountHashRecipient); // "Pool operator payment hash recipient incorrect");
+        expect(yesterdayPoolDay).to.be.equal(bn.BigNumber(paymentAdvice.paymentSubject).toNumber()); // "Pool operator payment reference incorrect");
+        expect(processingPoolOperatorsAmount_Cu).to.be.equal(paymentAdvice.amount.toNumber()); // "Pool operator payment amount incorrect");
     }
     // Verify the fourth payment advice (overflow payment)
     if (newPaymentAdviceEntries >= 4) {
         let paymentAdvice = await td.bank.bankPaymentAdvice(+firstOvernightPaymentAdviceEntryIdx + 3);
-        expect(3).to.be.eql(paymentAdvice[0].valueOf()); // "Overflow payment advice type incorrect");
-        expect(setupI.FUNDING_ACCOUNT_PAYMENT_HASH).to.be.eql(paymentAdvice[1].valueOf()); // "Overflow payment hash recipient incorrect");
-        expect(yesterdayPoolDay).to.be.eql(paymentAdvice[2].valueOf()); // "Overflow payment reference incorrect");
-        expect(processingOverflowAmount_Cu).to.be.eql(paymentAdvice[3].valueOf()); // "Overflow payment amount incorrect");
+        expect(3).to.be.equal(paymentAdvice.adviceType.toNumber()); // "Overflow payment advice type incorrect");
+        expect(setupI.FUNDING_ACCOUNT_PAYMENT_HASH).to.be.equal(paymentAdvice.paymentAccountHashRecipient); // "Overflow payment hash recipient incorrect");
+        expect(yesterdayPoolDay).to.be.equal(bn.BigNumber(paymentAdvice.paymentSubject).toNumber()); // "Overflow payment reference incorrect");
+        expect(processingOverflowAmount_Cu).to.be.equal(paymentAdvice.amount.toNumber()); // "Overflow payment amount incorrect");
     }
+    
     // Call the blockchain to advance time by 8 hours 35 min
-    web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [30900], id: 0});
+    web3.currentProvider.send({jsonrpc: '2.0', method: 'evm_increaseTime', params: [30900], id: 0}, () => { 
+        // Mine another block
+        web3.currentProvider.send({jsonrpc: '2.0', method: 'evm_mine', params: [], id: 0}, () => { })
+    });
+
+    // Sleep for a 100 milli seconds to ensure the advancing of the time and mining of another block has been completed
+    await miscFunc.sleep(100);
 }
 
 // dailyPolicyProcessing()
 exports.dailyPolicyProcessing = async () => {
     // Call the timer to initiate the processing of the policies
-    await td.timer.manualPing(td.policy.address, 0, 0, 0, {from: td.accounts[0]});
+    await td.timer.manualPing(td.policy.address, 0, miscFunc.getEmptyAdr(), 0, {from: td.accounts[0]});
     // Save the new value for the total issued policy risk points
-    td.totalRiskPoints = (await td.policy.totalIssuedPolicyRiskPoints()).valueOf();
+    td.totalRiskPoints = (await td.policy.totalIssuedPolicyRiskPoints()).toNumber();
 }
 
 // acceleratePoolYield()
 exports.acceleratePoolYield = async (_intervals) => {
     // Get the yield before the processing
-    let tempYield = (await td.pool.B_Yield_Ppb()).valueOf();
+    let tempYield = (await td.pool.B_Yield_Ppb()).toNumber();
     // Save the current yield
     td.b_yield_ppb = tempYield;
 
@@ -266,12 +283,12 @@ exports.acceleratePoolYield = async (_intervals) => {
     if (td.wc_bond_cu > ((td.wc_exp_cu * 24 * 3600 * setupI.YAC_EXPENSE_THRESHOLD_PPT) / ((setupI.DURATION_WC_EXPENSE_HISTORY_DAYS * 3600) * (Math.pow(10, 3))))) {
         // Accellerate the yield
         for (let i = 0; i < _intervals; i++) {
-            await td.timer.manualPing(td.pool.address, 0, 0x0, td.futureEpochTimeStamp, {from: td.accounts[0]});
+            await td.timer.manualPing(td.pool.address, 0, miscFunc.getEmptyAdr(), td.futureEpochTimeStamp, {from: td.accounts[0]});
             tempYield = Math.floor((tempYield * (Math.pow(10, 9) + setupI.YAC_PER_INTERVAL_PPB)) / Math.pow(10, 9));
         }
     }
     // Verify the new pool yield is correct
-    expect(tempYield).to.be.eql((await td.pool.B_Yield_Ppb()).valueOf());
+    expect(tempYield).to.be.equal((await td.pool.B_Yield_Ppb()).toNumber());
     // Save the new yield in testdata
     td.b_yield_ppb = tempYield;
 }
