@@ -135,7 +135,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
                 BOND_ACCOUNT_PAYMENT_HASH, 
                 bytes32(yesterdayPoolDay), 
                 totalPremiumYesterday_Cu,
-                bytes32("Pool")
+                bytes32(uint256(uint160(getPoolAdr())))
                 );
             
             // Adjust WC_Bal_PA_Cu
@@ -149,7 +149,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             if (paymentTrust >= 1) {
                 // Create payment advice for trust
                 Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Trust, TRUST_ACCOUNT_PAYMENT_HASH, 
-                    bytes32(yesterdayPoolDay), paymentTrust, bytes32("Pool"));
+                    bytes32(yesterdayPoolDay), paymentTrust, bytes32(uint256(uint160(getPoolAdr()))));
                 // Adjust WC_Bal_FA_Cu
                 WC_Bal_FA_Cu -= paymentTrust;
             }
@@ -158,7 +158,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             if (paymentPoolOperators >= 1) {
                 // Create payment advice for the pool operators
                 Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.PoolOperator, OPERATOR_ACCOUNT_PAYMENT_HASH, 
-                    bytes32(yesterdayPoolDay), paymentPoolOperators, bytes32("Pool"));
+                    bytes32(yesterdayPoolDay), paymentPoolOperators, bytes32(uint256(uint160(getPoolAdr()))));
                 // Adjust WC_Bal_FA_Cu
                 WC_Bal_FA_Cu -= paymentPoolOperators;
             }
@@ -172,7 +172,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             uint overflowAmount_Cu = WC_Bal_BA_Cu - (5 * bondMaturityPayoutFuturePerDay_Cu);
             // Create payment advice for funds being sent to the Funding Account
             Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Overflow, FUNDING_ACCOUNT_PAYMENT_HASH, 
-                bytes32(yesterdayPoolDay), overflowAmount_Cu, bytes32("Pool"));
+                bytes32(yesterdayPoolDay), overflowAmount_Cu, bytes32(uint256(uint160(getPoolAdr()))));
             // Adjust WC_Bal_BA_Cu
             WC_Bal_BA_Cu -= overflowAmount_Cu;
             // Add log entries
@@ -370,7 +370,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
                 // Increase the balance in the Bond Account
                 WC_Bal_BA_Cu += _bankCreditAmount_Cu;
                 // return success
-                return (true, 0x0, bytes32("Pool"));
+                return (true, 0x0, bytes32(uint256(uint160(getPoolAdr()))));
             } else {
                 // An invalid external payment has been made into the Bond account - return false to refund payment
                 return (false, bytes32("UnauthorisedPayment"), 0x0);
@@ -383,7 +383,7 @@ contract Pool is SetupI, IntAccessI, NotificationI {
             // If it is an overflow payment increase Funding account balance
             WC_Bal_FA_Cu += _bankCreditAmount_Cu;
             // return success
-            return (true, 0x0, bytes32("Pool"));
+            return (true, 0x0, bytes32(uint256(uint160(getPoolAdr()))));
         }
         
         // ******************************************************************************************

@@ -55,7 +55,7 @@ async function processPaymentAdvice(_idx) {
             paymentAdvice.paymentSubject,            // Payment Subject 
             paymentAdvice.amount.toNumber(),         // Amount
             true,
-            web3.utils.padRight(web3.utils.toHex("Pool"), 64), 
+            web3.utils.padLeft(td.pool.address.toLowerCase(), 64),
             '');
 
         // Adjust (WC_Bal_BA_Cu, WC_BAL_FA_CU)
