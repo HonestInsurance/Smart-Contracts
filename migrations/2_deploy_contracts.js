@@ -7,11 +7,8 @@
 
 // Load the test data to initialise the deployed contract variables
 const td = require("../test/misc/testData.js");
-const txFunc = require("../test/misc/txFunc.js");
 const abiDecoder = require('abi-decoder');
 const miscFunc = require("../test/misc/miscFunc.js");
-const trufflejs = require("../truffle.js");
-const web3js = require('web3');
 
 // Load the artifacts of the contracts that are deployed
 const abiLib = artifacts.require("./Lib.sol");
