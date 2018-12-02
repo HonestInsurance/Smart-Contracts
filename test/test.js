@@ -83,9 +83,9 @@ contract('All Insurance Ecosystem Contracts', async (accounts) => {
         await utAdjustor.retireAdjustor(td.aHash[aIdx]);
     });
 
-    // ******************************************************************************
-    // *** Test POOL, BOND, POLICY, BANK
-    // ******************************************************************************
+    // // ******************************************************************************
+    // // *** Test POOL, BOND, POLICY, BANK
+    // // ******************************************************************************
 
     it("should run all overnight processing tasks                                                                       ", async () => {
         await overnightProcessing(100000);
@@ -380,15 +380,15 @@ contract('All Insurance Ecosystem Contracts', async (accounts) => {
         await overnightProcessing(100000);
     });
     
-    // it("should print                                                                                                    ", async () => {
-    //     await printLogs.printTrustLogs(null, null, null);
-    //     await printLogs.printPremiums(7);
-    //     await printLogs.printBankPaymentAdvice();
-    //     await printLogs.printAdjustorLogs(null, null, null);
-    //     await printLogs.printSettlementLogs(null, null, null);
-    //     await printLogs.printPolicyLogs(null, null, null);
-    //     await printLogs.printBondLogs(null, null, null);
-    //     await printLogs.printPoolLogs(null, null, null);
-    //     await printLogs.printBankLogs(null, null, null);
-    // });
+    it("should print                                                                                                    ", async () => {
+        await printLogs.printTrustLogs(null, null, null);
+        await printLogs.printPremiums(7);
+        await printLogs.printBankPaymentAdvice();
+        await printLogs.printAdjustorLogs(null, null, null);
+        await printLogs.printSettlementLogs(null, null, null);
+        await printLogs.printPolicyLogs(null, null, null);
+        await printLogs.printBondLogs(null, null, null);
+        await printLogs.printPoolLogs(null, null, null);
+        await printLogs.printBankLogs(null, null, null);
+    });
 });
