@@ -1,5 +1,5 @@
 {
-  "name": "contracts",
+  "name": "hic-contracts",
   "version": "1.0.0",
   "description": "[<img src=\"https://github.com/HonestInsurance/Resources/blob/master/branding/HIC_Logo_Vertical.png?raw=true\" width=\"150\">](https://www.honestinsurance.net)",
   "main": "truffle.js",
@@ -9,14 +9,14 @@
   "scripts": {
     "test": "truffle test"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Martin Stellnberger",
+  "license": "GPL-3.0",
   "dependencies": {
-    "abi-decoder": "^1.1.0",
-    "bignumber.js": "^6.0.0",
+    "abi-decoder": "^1.2.0",
+    "bignumber.js": "^8.1.1",
     "expect.js": "^0.3.1",
-    "solc": "^0.5.0",
-    "truffle-hdwallet-provider": "^1.0.0-web3one.1",
-    "web3": "^1.0.0-beta.36"
+    "solc": "^0.5.5",
+    "truffle-hdwallet-provider": "^1.0.5",
+    "web3": "^1.0.0-beta.48"
   }
 }
