@@ -26,5 +26,14 @@ module.exports = {
     }
   },
 
-  solc: { optimizer: { enabled: true, runs: 200 } }
+  // command to download specific version:    truffle obtain --solc=0.5.5
+  compilers: {
+    solc: {
+      version: "^0.5.5", // A version or constraint - Ex. "^0.5.0"
+    }
+  },
+        
+  solc: { 
+    optimizer: { enabled: true, runs: 200 } 
+  }
 };
