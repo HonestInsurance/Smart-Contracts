@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.5;
+pragma solidity ^0.5.7;
 
 import "./IntAccessI.sol";
 import "./NotificationI.sol";
