@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.5;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -109,7 +109,7 @@ contract Bank is IntAccessI, ExtAccessI {
 
         // If the array holds the idx verify if it has not already been processed (is empty entry)
         require(bankPaymentAdvice[_idx].amount != 0, "Payment advice index already processed");
-        
+
         // Verify the bankTransactionIdx has not already been processed
         require(bankTransactionIdxProcessed[_bankTransactionIdx] == false, "Bank transaction index already used");
 
@@ -124,7 +124,7 @@ contract Bank is IntAccessI, ExtAccessI {
         else if ((bankPaymentAdvice[_idx].adviceType == Lib.PaymentAdviceType.BondMaturity) ||
             (bankPaymentAdvice[_idx].adviceType == Lib.PaymentAdviceType.Overflow))
             accType = Lib.AccountType.BondAccount;
-        else 
+        else
             accType = Lib.AccountType.FundingAccount;
 
         // Add bank transaction log entry
@@ -182,26 +182,26 @@ contract Bank is IntAccessI, ExtAccessI {
     {
         // Ensure the bankTransactionIdx has not already been processed
         require(bankTransactionIdxProcessed[_bankTransactionIdx] == false, "Bank transaction index already used");
-        
+
         // Ensure the account type is either PremiumAccount, BondAccount or FundingAccount
-        require((Lib.AccountType(_accountType) == Lib.AccountType.PremiumAccount) || 
-            (Lib.AccountType(_accountType) == Lib.AccountType.BondAccount) || 
-            (Lib.AccountType(_accountType) == Lib.AccountType.FundingAccount), 
+        require((Lib.AccountType(_accountType) == Lib.AccountType.PremiumAccount) ||
+            (Lib.AccountType(_accountType) == Lib.AccountType.BondAccount) ||
+            (Lib.AccountType(_accountType) == Lib.AccountType.FundingAccount),
             "Invalid bank account type");
-        
+
         // Verify a paymentAccountHash has been provided for the sender
         require(_paymentAccountHashSender != bytes32(0x0), "Invalid sender payment account hash");
 
         // Mark the bank transaction index as processed to avoid double processing
         bankTransactionIdxProcessed[_bankTransactionIdx] = true;
-        
+
         bool success;
         bytes32 info;
         bytes32 internalReferenceHash;
-        
+
         // Process the deposit with the pool
         (success, info, internalReferenceHash) = Pool(getPoolAdr()).processAccountCredit(Lib.AccountType(_accountType), _paymentAccountHashSender, _paymentSubject, _bankCreditAmount_Cu);
-        
+
         emit LogBank(
             internalReferenceHash,
             _accountType,

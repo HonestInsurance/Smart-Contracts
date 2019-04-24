@@ -5,12 +5,12 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.5;
 
 import "./Lib.sol";
 
 
-/** @title Insurance Pool Contract storing all its parameters.*/ 
+/** @title Insurance Pool Contract storing all its parameters.*/
 contract SetupI {
     // Name of the insurance Pool
     string public constant POOL_NAME = "HIC Pool # 1";

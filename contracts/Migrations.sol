@@ -5,17 +5,17 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.5;
 
 
 /** @title Default migrations contract used by truffle.*/
 contract Migrations {
-    
+
     address public owner;
     uint public last_completed_migration;
 
     modifier restricted() {
-        if (msg.sender == owner) 
+        if (msg.sender == owner)
             _;
     }
 

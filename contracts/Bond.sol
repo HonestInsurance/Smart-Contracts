@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.5;
 
 import "./Lib.sol";
 import "./Pool.sol";
@@ -38,7 +38,7 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         uint nextStateExpiryDate;
         uint maturityDate;
         
-        // Different states a Bond can be in 
+        // Different states a Bond can be in
         Lib.BondState state;
 
         // Used to store:  => the address of the bond that was used as a security this bond if applicable
@@ -65,8 +65,8 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
      * @param _principal_Cu The principal amount of the Bond.
      * @param _hashOfReferenceBond Optional parameter with the hash of an existing bond owned by the same person who is submitting this transaction
      */
-    function createBond(uint _principal_Cu, bytes32 _hashOfReferenceBond) 
-        public 
+    function createBond(uint _principal_Cu, bytes32 _hashOfReferenceBond)
+        public
         isNotContractAdr(msg.sender)
     {
         // Ensure bond principal is in between the min and max boundaries
@@ -175,13 +175,13 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         // Verify if the paymentSubject provided matches the any of the Bond hashes
         if (dataStorage[_paymentSubject].owner != address(0x0))
             bondHash = _paymentSubject;
-        else 
+        else
             return (false, bytes32("PaymentSubject"), 0x0, false);
         
 
         // Verify if the bond is in a valid state (Created or Signed)
         if ((dataStorage[bondHash].state != Lib.BondState.Created) &&
-            (dataStorage[bondHash].state != Lib.BondState.Signed)) 
+            (dataStorage[bondHash].state != Lib.BondState.Signed))
         {
             // Add log entry as bond is in invalid state
             emit LogBond(bondHash, dataStorage[bondHash].owner, bytes32("BondState"), now, uint(dataStorage[bondHash].state));
@@ -245,7 +245,7 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         dataStorage[bondHash].state = Lib.BondState.Issued;
         
         // Calculate the preliminary BondMaturityPayoutAmount
-        dataStorage[bondHash].maturityPayoutAmount_Cu = dataStorage[bondHash].principal_Cu + 
+        dataStorage[bondHash].maturityPayoutAmount_Cu = dataStorage[bondHash].principal_Cu +
             (dataStorage[bondHash].principal_Cu * dataStorage[bondHash].yield_Ppb / 10**9);
 
         // Calculate the day this bond matures
@@ -275,15 +275,15 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
     {
         // If the maturity date does not match the scheduled ping notification return 0 or
         // the bond is in a Matured or Defaulted state return 0
-        if ((_scheduledDateTime < dataStorage[_bondHash].maturityDate) || 
-            (dataStorage[_bondHash].state == Lib.BondState.Matured) || 
+        if ((_scheduledDateTime < dataStorage[_bondHash].maturityDate) ||
+            (dataStorage[_bondHash].state == Lib.BondState.Matured) ||
             (dataStorage[_bondHash].state == Lib.BondState.Defaulted))
             return 0;
 
         // Set the payout amount to the previously calculated maturity payout amount for the bond
         uint payoutAmount_Cu = dataStorage[_bondHash].maturityPayoutAmount_Cu;
         // Set the transitAmount_Cu if the Bond is 'Signed' state
-        uint reduceWcTransitAmount_Cu = (dataStorage[_bondHash].state == Lib.BondState.Signed ? 
+        uint reduceWcTransitAmount_Cu = (dataStorage[_bondHash].state == Lib.BondState.Signed ?
             dataStorage[_bondHash].principal_Cu : 0);
         // Variable to store the penalty amount if bond is in a LockedReferenceBond state
         uint penaltyAmount_Cu = 0;
@@ -302,7 +302,7 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         // If the maturity payout amount is greater than 0 then create a bank payment advice
         if (dataStorage[_bondHash].maturityPayoutAmount_Cu > 0) {
             // Create payment instruction for the bank
-            Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.BondMaturity, 
+            Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.BondMaturity,
                 dataStorage[_bondHash].paymentAccountHash, _bondHash, dataStorage[_bondHash].maturityPayoutAmount_Cu, _bondHash);
         }
 
@@ -312,7 +312,7 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         // Change the bond's status
         if (dataStorage[_bondHash].state == Lib.BondState.Issued)
             dataStorage[_bondHash].state = Lib.BondState.Matured;
-        else 
+        else
             dataStorage[_bondHash].state = Lib.BondState.Defaulted;
         
         // Add log entry
@@ -351,14 +351,14 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         // Calculate the bond maturity payouts for the future on a per day basis
         bondMaturityPayoutFuturePerDay_Cu /= (_endDay - _beginDay);
 
-        // Return the 
+        // Return the
         return (bondMaturityPayoutAmountNext3Days_Cu, bondMaturityPayoutFuturePerDay_Cu);
     }
 
     /**@dev Calculates the maturity time for the bond and schedules a ping notification
      * @param _bondHash The hash of the bond to schedule the maturity ping notification for
      */
-    function setScheduleMaturityEvent(bytes32 _bondHash) 
+    function setScheduleMaturityEvent(bytes32 _bondHash)
         private
     {
         // Calculate the maturity time for the bond

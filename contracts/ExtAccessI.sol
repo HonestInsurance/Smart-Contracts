@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.5;
 
 
 /** @title Interface contract managing external access keys for authorisation and authentication.*/

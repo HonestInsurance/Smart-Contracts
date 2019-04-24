@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.5;
 
 import "./Lib.sol";
 import "./SetupI.sol";
@@ -93,10 +93,10 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
      * @param _serviceAgreementHash The hash of the new service agreement
      */
     function updateAdjustor(
-        bytes32 _adjustorHash, 
-        address _owner, 
-        uint _settlementApprovalAmount_Cu, 
-        uint _policyRiskPointLimit, 
+        bytes32 _adjustorHash,
+        address _owner,
+        uint _settlementApprovalAmount_Cu,
+        uint _policyRiskPointLimit,
         bytes32 _serviceAgreementHash
         )
         public
@@ -149,7 +149,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
     // *******************************
     // *** Miscellaneous functions
     // *******************************
-    
+
     /**@dev Verifies if the specified adjustor is authorised to approve the requested settlement amount
      * @param _hash Hash of the adjustor used
      * @param _adr Signing address used for this transaction
@@ -159,7 +159,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
     function isAdjustorSettlementPermissioned(bytes32 _hash, address _adr, uint _approvalAmount) public view returns (bool) {
         // Adjustor hash needs to be active and provided address needs to match the adjustor's signing address
         // The adjustors settlement approval amount needs to be set and it needs to be greater or equal to the specified approval amount
-        return ((isActive(_hash) == true) && (dataStorage[_hash].owner == _adr) && 
+        return ((isActive(_hash) == true) && (dataStorage[_hash].owner == _adr) &&
             (dataStorage[_hash].settlementApprovalAmount_Cu > 0) && (dataStorage[_hash].settlementApprovalAmount_Cu >= _approvalAmount));
     }
 
@@ -172,7 +172,7 @@ contract Adjustor is SetupI, IntAccessI, HashMapI {
     function isAdjustorPolicyPermissioned(bytes32 _hash, address _adr, uint _policyRiskPoints) public view returns (bool) {
         // Adjustor hash needs to be active and the provided address needs to match the adjustor's signing address and
         // The adjustors risk point limit needs to be set and the risk points needs to be greater or equal to the specified risk points
-        return ((isActive(_hash) == true) && (dataStorage[_hash].owner == _adr) && 
+        return ((isActive(_hash) == true) && (dataStorage[_hash].owner == _adr) &&
             (dataStorage[_hash].policyRiskPointLimit > 0) && (dataStorage[_hash].policyRiskPointLimit >= _policyRiskPoints));
     }
 }

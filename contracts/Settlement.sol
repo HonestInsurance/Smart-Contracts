@@ -5,7 +5,7 @@
  * @license GPL-3.0
  */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.5;
 
 import "./Lib.sol";
 import "./SetupI.sol";
@@ -25,7 +25,7 @@ contract Settlement is SetupI, IntAccessI, HashMapI {
         uint idx;
         // The final OR anticipated settlement amount (if the settlement is not in an closed state this is the expected settlement amount)
         uint settlementAmount;
-        // Different states a Settlement can be in 
+        // Different states a Settlement can be in
         Lib.SettlementState state;
     }
 
