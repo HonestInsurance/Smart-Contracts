@@ -15,8 +15,8 @@
     "abi-decoder": "^1.2.0",
     "bignumber.js": "^8.1.1",
     "expect.js": "^0.3.1",
-    "solc": "^0.5.5",
+    "solc": "^0.5.7",
     "truffle-hdwallet-provider": "^1.0.5",
-    "web3": "^1.0.0-beta.48"
+    "web3": "^1.0.0-beta.52"
   }
 }
