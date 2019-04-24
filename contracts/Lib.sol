@@ -10,7 +10,7 @@ pragma solidity ^0.5.5;
 
 /** @title Library functions used by contracts within this ecosystem.*/
 library Lib {
-    
+
     /**
     * @dev Enum of the diffent Bank accounts held by the pool
     */
@@ -74,7 +74,7 @@ library Lib {
         /*1*/ Processing,   // Settlement is in a processing state
         /*2*/ Settled       // The settlement request has been completed (no further amendments are possible)
     }
-    
+
     /**
      * @dev Enum to store the states of HashMapping entries
      */
