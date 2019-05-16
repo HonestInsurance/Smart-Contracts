@@ -20,6 +20,7 @@ contract SetupI {
     uint public constant DURATION_TO_BOND_MATURITY_SEC = 90 days;          // (90 Days)
     uint public constant DURATION_BOND_LOCK_NEXT_STATE_SEC = 2 days;       // (2 Days)
     uint public constant DURATION_WC_EXPENSE_HISTORY_DAYS = 14;            // (14 Days)
+    //uint public constant MIN_BOND_ACCOUNT_BALANCE_DAYS = 3;                // (3 Days)
 
     // Yield constants
     uint public constant YAC_PER_INTERVAL_PPB = 20000000;               // (2% per hour)
