@@ -54,7 +54,7 @@ exports.dailyOvernightProcessing = async () => {
     });
 
     // Sleep for a 100 milli seconds to ensure the advancing of the time and mining of another block has been completed
-    await miscFunc.sleep(100);
+    await miscFunc.sleep(5);
 
     // Get the value for wc expenses
     td.wc_exp_cu = (await td.pool.WC_Exp_Cu()).toNumber();
@@ -63,16 +63,12 @@ exports.dailyOvernightProcessing = async () => {
     
     // Set the next overnight processing (if it is daylight saving change nextOvernightProcessingTimestamp will be adjusted in the corresponding test function)
     td.nextOvernightProcessingTimestamp = +td.nextOvernightProcessingTimestamp + 86400;
-    // Increase the current pool day
-    td.currentPoolDay++;
-
-    // Set the yesterdayPoolDay
-    const yesterdayPoolDay = +td.currentPoolDay - 1;
     
-    // Get Bond maturity payout for next 3 days and future per day
-    const bondMaturityPayoutAmountNext3Days_Cu = miscFunc.getBondMaturityPaymentsNext3Days();
-    const bondMaturityPayoutFuturePerDay_Cu = miscFunc.getBondMaturityPaymentsAveragePerDay();
-
+    // Set yesterdayPoolDay and tomorrowPoolDay and increase currentPoolDay by 1
+    const yesterdayPoolDay = td.currentPoolDay;
+    const tomorrowPoolDay = td.currentPoolDay + 1;
+    td.currentPoolDay++;
+    
     // Value to save overwriteWcExpenses
     const overwriteWcExpenses = await td.pool.overwriteWcExpenses();
     // Get the count of the existing payment advice entries
@@ -89,14 +85,24 @@ exports.dailyOvernightProcessing = async () => {
     // Variable to store existing number of payment advice entries temporarily
     let newPaymentAdviceEntries = 0;
     
-    // Initiate overnight processing of the pool
+    // ********************************************************************************
+    // *** Initiate overnight processing of the pool
+    // ********************************************************************************
+    
     const tx = await td.timer.manualPing(td.pool.address, 1, miscFunc.getEmptyAdr(), 0, {from: td.accounts[0]});
     // Extract the decoded logs
     const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
 
+    // ********************************************************************************
+    // *** (1) Process payments for yesterday (Premium, Pool operators and Trust)
+    // ********************************************************************************
+
     // *** Adjust bank account balances if premium yesterday was paid
     if (premium_yesterday_Cu > 0) {
+        // Decrease the balance in the premium acount
         td.wc_bal_pa_cu -= premium_yesterday_Cu;
+        // Increase the account balance in the bond account
+        td.wc_bal_ba_cu += premium_yesterday_Cu;
         newPaymentAdviceEntries++;
 
         processingTrustAmount_Cu = Math.floor((premium_yesterday_Cu * setupI.TRUST_FEE_PPT) / Math.pow(10, 3));
@@ -114,25 +120,32 @@ exports.dailyOvernightProcessing = async () => {
         }
     }
 
-    // Calculate the new value for working capital expenses if the overwrite flag has not been set
-    // Get the expense forecast for the new day
-    // Solidity code
-    // WC_Exp_Cu = ((WC_Exp_Cu * (DURATION_WC_EXPENSE_HISTORY_DAYS - 1)) / DURATION_WC_EXPENSE_HISTORY_DAYS) + 
-    //         Bank(getBankAdr()).getResetFundingAccountPaymentsTracking();
+    // ********************************************************************************
+    // *** (2) Process overflow payment for yesterday if applicable
+    // ********************************************************************************
 
+    // Call the function to calculate the average bond maturity per day and max bond slope per day
+    const bondMaturityAverageMaxSlope_Cu = miscFunc.calculateAvgBondMaxBondSlope(tomorrowPoolDay, td.wc_bal_ba_cu);
+
+    // If the average amount is greater than the max bond slope an overflow payment has happened
+    if (bondMaturityAverageMaxSlope_Cu[0] > bondMaturityAverageMaxSlope_Cu[1]) {
+        // Calculate the overflow amount
+        processingOverflowAmount_Cu = +bondMaturityAverageMaxSlope_Cu[0] - +bondMaturityAverageMaxSlope_Cu[1];
+        // An overflow payment has been made => Adjust the bank account banlances
+        td.wc_bal_ba_cu -= processingOverflowAmount_Cu;
+        td.wc_bal_fa_cu += processingOverflowAmount_Cu;
+        // Increase the payment counter by 1
+        newPaymentAdviceEntries++;
+    }
+    
+    // ********************************************************************************
+    // *** (3) RECALCULATION of tomorrow's insurance pool variables (IP Yield, IP Gradient, WC_BOND, WC_DELTA)
+    // ********************************************************************************
+
+    // *** Calculate the new value for working capital expenses if the overwrite flag has not been set
     if(overwriteWcExpenses == false) {
         td.wc_exp_cu = Math.floor((+td.wc_exp_cu * (+setupI.DURATION_WC_EXPENSE_HISTORY_DAYS - 1) / +setupI.DURATION_WC_EXPENSE_HISTORY_DAYS) + 
             +bankPaymentsTracking);
-    }
-
-    //console.log('Pool: ' + processingPoolOperatorsAmount_Cu + '   Trust: ' + processingTrustAmount_Cu + '   Total: ' + bankPaymentsTracking);
-
-    // *** Adjust bank account balances if an overflow payment has occured
-    if (td.wc_bal_ba_cu > 5 * bondMaturityPayoutFuturePerDay_Cu) {
-        processingOverflowAmount_Cu = td.wc_bal_ba_cu - (5 * bondMaturityPayoutFuturePerDay_Cu);
-        td.wc_bal_ba_cu -= processingOverflowAmount_Cu;
-        // Increase the payment counter by 1
-        newPaymentAdviceEntries++;
     }
 
     // *** Calculate WC BOND Cu
@@ -152,29 +165,36 @@ exports.dailyOvernightProcessing = async () => {
         td.wc_bond_cu = 0;
     }
 
-    // *** Calculate the PREMIUM PER RISK POINT TODAY
-    let totalPremiumTargetToday_Cu = 0;
-    let premiumPerRiskPoint_Cu = 0;
-
-    // SOLIDITY code
-    // if (bondMaturityPayoutAmountNext3Days_Cu - WC_Bal_BA_Cu - totalPremiumYesterday_Cu > bondMaturityPayoutFuturePerDay_Cu)
-    //     totalPremiumTargetToday_Cu = bondMaturityPayoutAmountNext3Days_Cu - WC_Bal_BA_Cu - totalPremiumYesterday_Cu;
-    // else totalPremiumTargetToday_Cu = bondMaturityPayoutFuturePerDay_Cu;
-
-    if (bondMaturityPayoutAmountNext3Days_Cu - td.wc_bal_ba_cu - premium_yesterday_Cu > bondMaturityPayoutFuturePerDay_Cu)
-        totalPremiumTargetToday_Cu = +bondMaturityPayoutAmountNext3Days_Cu - +td.wc_bal_ba_cu - premium_yesterday_Cu;
-    else totalPremiumTargetToday_Cu = bondMaturityPayoutFuturePerDay_Cu;
-
-    // SOLIDITY code
-    // premiumPerRiskPoint_Cu_Ppm[currentPoolDay] = (totalPremiumTargetToday_Cu * (10**6)) / totalPolicyRiskPoints;
-    if (td.totalRiskPoints > 0)
-        premiumPerRiskPoint_Cu = Math.floor((totalPremiumTargetToday_Cu *  Math.pow(10, 6)) / td.totalRiskPoints);
-
     // *** Calculate the GRADIENT
     if (td.wc_bond_cu > 0)
         td.b_gradient_ppq = Math.floor(td.b_yield_ppb * Math.pow(10, 6) / td.wc_bond_cu);
     else td.b_gradient_ppq = 0;
-    
+
+    // ********************************************************************************
+    // *** (4) CALCULATION of tomorrow's insurance PREMIUM PER RISK POINT
+    // ********************************************************************************
+
+    // SOLIDITY code
+        // // Tomorrows's total premium target is the greater value of the bond average or the max bond slope
+        // uint totalPremiumTargetTomorrow_Cu = 
+        // (_bondMaturityAverage_Cu > _bondMaturityMaxSlope_Cu ? _bondMaturityAverage_Cu : _bondMaturityMaxSlope_Cu);
+
+        // // Calculate the tomorrows premium per risk point
+        // uint tomorrowPremiumPerRiskPoint = 
+        //     (totalIssuedPolicyRiskPoints > 0 ? (totalPremiumTargetTomorrow_Cu * (10**6))/totalIssuedPolicyRiskPoints : 0);
+
+    // Set the premium target for tomorrow to the max value of average bond and max slope
+    let totalPremiumTargetTomorrow_Cu = Math.max(bondMaturityAverageMaxSlope_Cu[0], bondMaturityAverageMaxSlope_Cu[1]);
+
+    let premiumPerRiskPointTomorrow_Cu = 0;
+
+    // premiumPerRiskPoint_Cu_Ppm[currentPoolDay] = (totalPremiumTargetToday_Cu * (10**6)) / totalPolicyRiskPoints;
+    if (td.totalRiskPoints > 0)
+        premiumPerRiskPointTomorrow_Cu = Math.floor((totalPremiumTargetTomorrow_Cu *  Math.pow(10, 6)) / td.totalRiskPoints);
+
+    // Verify the calculated premiums per risk point for tomorrow are correct
+    expect(premiumPerRiskPointTomorrow_Cu).to.be.equal((await td.policy.premiumPerRiskPoint_Cu_Ppm(tomorrowPoolDay, 0)).toNumber());
+
 
     // SOLIDITY CODE - Verify all the events that were triggered with
     // 0 LogPool(bytes32("TotalRiskPoints"), address(yesterdayPoolDay), bytes32(totalPolicyRiskPoints), now);
@@ -201,16 +221,16 @@ exports.dailyOvernightProcessing = async () => {
     }
     
     // Verify the event logs that were created as for today pool day
-    miscFunc.verifyPoolLog(logs, +nextLogIdx + 0, 'WcExpenseForecastCu', td.currentPoolDay, td.wc_exp_cu, null);
-    miscFunc.verifyPoolLog(logs, +nextLogIdx + 1, 'WcBondCu', td.currentPoolDay, td.wc_bond_cu, null);
-    miscFunc.verifyPoolLog(logs, +nextLogIdx + 2, 'BondGradientPpq', td.currentPoolDay, td.b_gradient_ppq, null);
-    miscFunc.verifyPoolLog(logs, +nextLogIdx + 3, 'BondYieldPpb', td.currentPoolDay, td.b_yield_ppb, null);
-    miscFunc.verifyPoolLog(logs, +nextLogIdx + 4, 'BondPayoutNext3DaysCu', td.currentPoolDay, bondMaturityPayoutAmountNext3Days_Cu, null);
-    miscFunc.verifyPoolLog(logs, +nextLogIdx + 5, 'BondPayoutFutureCu', td.currentPoolDay, bondMaturityPayoutFuturePerDay_Cu, null);
-    miscFunc.verifyPoolLog(logs, +nextLogIdx + 6, 'PremiumPerRiskPointPpm', td.currentPoolDay, premiumPerRiskPoint_Cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 0, 'WcExpenseForecastCu', tomorrowPoolDay, td.wc_exp_cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 1, 'WcBondCu', tomorrowPoolDay, td.wc_bond_cu, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 2, 'BondGradientPpq', tomorrowPoolDay, td.b_gradient_ppq, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 3, 'BondYieldPpb', tomorrowPoolDay, td.b_yield_ppb, null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 4, 'BondMaturityAverageCu', tomorrowPoolDay, bondMaturityAverageMaxSlope_Cu[0], null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 5, 'BondMaturityMaxSlopeCu', tomorrowPoolDay, bondMaturityAverageMaxSlope_Cu[1], null);
+    miscFunc.verifyPoolLog(logs, +nextLogIdx + 6, 'PremiumPerRiskPointPpm', tomorrowPoolDay, premiumPerRiskPointTomorrow_Cu, null);
 
     // Verify current pool day is still 'yesterday' and has not changed
-    expect(td.currentPoolDay).to.be.equal((await td.pool.currentPoolDay()).toNumber());
+    expect(tomorrowPoolDay).to.be.equal((await td.pool.currentPoolDay()).toNumber());
     // Verify overwrite WC expenses is now set to false
     expect(false).to.be.equal(await td.pool.overwriteWcExpenses());
     // Verify premium account, bond account and funding account balances are correct
@@ -261,7 +281,7 @@ exports.dailyOvernightProcessing = async () => {
     });
 
     // Sleep for a 100 milli seconds to ensure the advancing of the time and mining of another block has been completed
-    await miscFunc.sleep(100);
+    await miscFunc.sleep(5);
 }
 
 // dailyPolicyProcessing()

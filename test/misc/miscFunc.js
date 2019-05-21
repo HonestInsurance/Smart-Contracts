@@ -116,28 +116,72 @@ exports.getSettlementDocument = function (idx) { return web3.utils.sha3('Settlem
 exports.getPolicyDocument = function() { return 'Policy 123 Document'; };
 exports.getPolicyDocumentHash = function() { return web3.utils.sha3('Policy 123 Document'); };
 
+// Calculates the average bond maturity and the max bond slope per day
+// _tomorrow pool day is the first day of the days to calculate the average about
+// _wcBondBalance is the current balance of the bond account
+exports.calculateAvgBondMaxBondSlope = function(_tomorrowPoolDay, _wcBondBalance_Cu) {  
+    // Return variable for average bond maturity amount  
+    let bondMaturityAverage_Cu = 0;
+    // Return variable for max slope
+    let bondMaturityMaxSlope_Cu = 0;
 
+    // Calculate the last day bonds can theoretically mature give the starting pool day of _tomorrowPoolDay
+    const lastPoolDay = +_tomorrowPoolDay + (setupI.DURATION_TO_BOND_MATURITY_SEC / (86400));
 
-// Calculates the combined and updcoming bond maturity payout amounts for the next 3 days
-exports.getBondMaturityPaymentsNext3Days = function() {
-    var sum = 0;
-    if (td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 0] != null) sum = +sum + +td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 0];
-    if (td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 1] != null) sum = +sum + +td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 1];
-    if (td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 2] != null) sum = +sum + +td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 2];
-    return sum;
-}
-
-// Calculates the averabe bond maturity payments for the future averages accross the planing horizon
-exports.getBondMaturityPaymentsAveragePerDay = function() {
-    var sum = 0;
-    var lastDay = (setupI.DURATION_TO_BOND_MATURITY_SEC / (3600 * 24)) + +td.currentPoolDay;
-    for (var i=td.currentPoolDay; i<=lastDay; i++) {
+    // Calculate the average bond maturity payout amount
+    for (let i=_tomorrowPoolDay; i<=lastPoolDay; i++) {
         if (td.bondMaturityPayoutsEachDay[i] != null) {
-            sum = +sum + +td.bondMaturityPayoutsEachDay[i];
+            // Add the maturing bond amounts
+            bondMaturityAverage_Cu = +bondMaturityAverage_Cu + +td.bondMaturityPayoutsEachDay[i];
         }
     }
-    return Math.floor(sum / (setupI.DURATION_TO_BOND_MATURITY_SEC / (3600 * 24)));
+    // Calculate the average amount
+    bondMaturityAverage_Cu = Math.floor(+bondMaturityAverage_Cu / (+lastPoolDay - +_tomorrowPoolDay));
+
+    let sumBondsToDate = 0;
+    // Calculate the max slope
+    for (let i=_tomorrowPoolDay; i<=lastPoolDay; i++) {
+        if (td.bondMaturityPayoutsEachDay[i] != null) {
+            // Add the maturing bond amounts to sumBondsToDate
+            sumBondsToDate = +sumBondsToDate + +td.bondMaturityPayoutsEachDay[i];
+        }
+        // Calculate and set the potentially new value for bondMaturityMaxSlope_Cu
+        // The new (old) max slope is the greater value of
+        bondMaturityMaxSlope_Cu = Math.max(
+            // past maturity max sope value
+            bondMaturityMaxSlope_Cu,
+            // New max sope value calculated as
+            Math.floor(
+                // Minimum required bond account balance  PLUS  all maturing bonds to day  MINUS  bond account balance
+                (+setupI.MIN_BOND_ACCOUNT_BALANCE_DAYS * +bondMaturityAverage_Cu + +sumBondsToDate - +_wcBondBalance_Cu) / 
+                // DIVIDED by the number of days
+                (+i - +_tomorrowPoolDay + 1)));     
+    }
+
+    // Returns the average bond maturity amount and the max bond slope amount
+    return [bondMaturityAverage_Cu, bondMaturityMaxSlope_Cu];
 }
+
+// // Calculates the combined and updcoming bond maturity payout amounts for the next 3 days
+// exports.getBondMaturityPaymentsNext3Days = function() {
+//     var sum = 0;
+//     if (td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 0] != null) sum = +sum + +td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 0];
+//     if (td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 1] != null) sum = +sum + +td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 1];
+//     if (td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 2] != null) sum = +sum + +td.bondMaturityPayoutsEachDay[+td.currentPoolDay + 2];
+//     return sum;
+// }
+
+// // Calculates the averabe bond maturity payments for the future averages accross the planing horizon
+// exports.getBondMaturityPaymentsAveragePerDay = function() {
+//     var sum = 0;
+//     var lastDay = (setupI.DURATION_TO_BOND_MATURITY_SEC / (3600 * 24)) + +td.currentPoolDay;
+//     for (var i=td.currentPoolDay; i<=lastDay; i++) {
+//         if (td.bondMaturityPayoutsEachDay[i] != null) {
+//             sum = +sum + +td.bondMaturityPayoutsEachDay[i];
+//         }
+//     }
+//     return Math.floor(sum / (setupI.DURATION_TO_BOND_MATURITY_SEC / (3600 * 24)));
+// }
 
 // Function verifies all contract addresses specified for any of the dependent contracts
 exports.verifyAllContractReferenceAdr = function(idx, poolAdrRef, bondAdrRef, bankAdrRef, policyAdrRef, settlementAdrRef, adjustorAdrRef, timerAdrRef, trustAdrRef) {

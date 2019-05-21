@@ -517,26 +517,37 @@ contract Policy is SetupI, IntAccessI, NotificationI, HashMapI {
         }
     }
 
-    /**@dev Sets the premium per risk point for all the policies for the specified day 
-     * @param _premiumPerRiskPoint The premium amount a policy is chared for the current day per risk point
-     * @param _currentPoolDay The current day to store the risk premium for
+    /**@dev Sets the premium per risk point for all the policies for the specified day
+     * @param _bondMaturityAverage_Cu The average bond maturity per day
+     * @param _bondMaturityMaxSlope_Cu The max bond slope per day
+     * @param _tomorrowPoolDay Tomorrow's insurance pool day to store the risk premium for
      */
-    function setPremiumPerRiskPoint(uint _premiumPerRiskPoint, uint _currentPoolDay)
+    function setPremiumPerRiskPoint(uint _bondMaturityAverage_Cu, uint _bondMaturityMaxSlope_Cu, uint _tomorrowPoolDay)
         public
         isPoolAuth
     {
-        // Save the new currentPoolDay
-        currentPoolDay = _currentPoolDay;
+        // Set the new current pool day to tomorrow
+        currentPoolDay = _tomorrowPoolDay;
+
         // Ensure that this function can only be called once for a particular day by the pool by checking if the current pool day's risk point premium is still 0
-        assert(premiumPerRiskPoint_Cu_Ppm[currentPoolDay][0] == 0);
+        assert(premiumPerRiskPoint_Cu_Ppm[_tomorrowPoolDay][0] == 0);
+
+        // Tomorrows's total premium target is the greater value of the bond average or the max bond slope
+        uint totalPremiumTargetTomorrow_Cu = 
+            (_bondMaturityAverage_Cu > _bondMaturityMaxSlope_Cu ? _bondMaturityAverage_Cu : _bondMaturityMaxSlope_Cu);
+
+        // Calculate the tomorrows premium per risk point
+        uint tomorrowPremiumPerRiskPoint = 
+            (totalIssuedPolicyRiskPoints > 0 ? (totalPremiumTargetTomorrow_Cu * (10**6))/totalIssuedPolicyRiskPoints : 0);
+
         // Save premium per risk point as calculated for today
-        premiumPerRiskPoint_Cu_Ppm[currentPoolDay][0] = _premiumPerRiskPoint;
+        premiumPerRiskPoint_Cu_Ppm[_tomorrowPoolDay][0] = tomorrowPremiumPerRiskPoint;
         // Save premium per risk point for 1 day (only yesterday)
-        premiumPerRiskPoint_Cu_Ppm[currentPoolDay][1] = premiumPerRiskPoint_Cu_Ppm[currentPoolDay - 1][0];
+        premiumPerRiskPoint_Cu_Ppm[_tomorrowPoolDay][1] = premiumPerRiskPoint_Cu_Ppm[_tomorrowPoolDay - 1][0];
         // Iterate and calculate the risk points for any number of days for reconciliation
         for (uint i = 2; i<=MAX_DURATION_POLICY_RECONCILIATION_DAYS; i++) {
             // Calculate the historic cummulated premiums per risk points over the past days (copy of yesterday's history + new premium for today)
-            premiumPerRiskPoint_Cu_Ppm[currentPoolDay][i] = premiumPerRiskPoint_Cu_Ppm[currentPoolDay - 1][i-1] + premiumPerRiskPoint_Cu_Ppm[currentPoolDay][1];
+            premiumPerRiskPoint_Cu_Ppm[_tomorrowPoolDay][i] = premiumPerRiskPoint_Cu_Ppm[_tomorrowPoolDay - 1][i-1] + premiumPerRiskPoint_Cu_Ppm[_tomorrowPoolDay][1];
         }
     }
     

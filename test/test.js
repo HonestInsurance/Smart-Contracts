@@ -83,9 +83,9 @@ contract('All Insurance Ecosystem Contracts', async (accounts) => {
         await utAdjustor.retireAdjustor(td.aHash[aIdx]);
     });
 
-    // // ******************************************************************************
-    // // *** Test POOL, BOND, POLICY, BANK
-    // // ******************************************************************************
+    // ******************************************************************************
+    // *** Test POOL, BOND, POLICY, BANK
+    // ******************************************************************************
 
     it("should run all overnight processing tasks                                                                       ", async () => {
         await overnightProcessing(100000);
@@ -94,6 +94,29 @@ contract('All Insurance Ecosystem Contracts', async (accounts) => {
     it("should change the pool daylight saving time                                                                     ", async () => {
         await utTrust.adjustDaylightSaving();
     });
+
+    // it("should create many bonds and process overnight processing to trigger overflow payments                          ", async () => {
+    //     const pIdx = 1; const aIdx = 1;
+    //     await createPolicyCreditPremium(1000, pIdx, aIdx, 3000000);
+    //     let bIdx = 1;
+    //     await createBondCreditPrincipal(24900, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(95900, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(73500, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(61000, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(146900, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(54200, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(64600, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(58600, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(128000, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(126900, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(123600, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(84100, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(95100, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(148500, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(122900, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(13500, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    //     await createBondCreditPrincipal(55900, miscFunc.getEmptyHash(), bIdx, 1); bIdx += 1; await overnightProcessing(100000);
+    // });
 
     it("should create bond 1 [owner: 1] (SecuredBondPrincipal)                                                          ", async () => {
         const bOwnerIdx = 1;
@@ -192,9 +215,9 @@ contract('All Insurance Ecosystem Contracts', async (accounts) => {
          await utBank.processAllOutstandginPaymentAdvice();
     });
 
-    // // ******************************************************************************
-    // // *** Test OVERNIGHT PROCESSING
-    // // ******************************************************************************
+    // ******************************************************************************
+    // *** Test OVERNIGHT PROCESSING
+    // ******************************************************************************
 
     it("should run all overnight processing tasks                                                                       ", async () => {
         await overnightProcessing(100000);
@@ -379,16 +402,24 @@ contract('All Insurance Ecosystem Contracts', async (accounts) => {
     it("should run all overnight processing tasks                                                                       ", async () => {
         await overnightProcessing(100000);
     });
+
+    it("should run all overnight processing tasks                                                                       ", async () => {
+        await overnightProcessing(100000);
+    });
+
+    it("should run all overnight processing tasks                                                                       ", async () => {
+        await overnightProcessing(100000);
+    });
     
     it("should print                                                                                                    ", async () => {
-        await printLogs.printTrustLogs(null, null, null);
-        await printLogs.printPremiums(7);
-        await printLogs.printBankPaymentAdvice();
-        await printLogs.printAdjustorLogs(null, null, null);
-        await printLogs.printSettlementLogs(null, null, null);
-        await printLogs.printPolicyLogs(null, null, null);
-        await printLogs.printBondLogs(null, null, null);
-        await printLogs.printPoolLogs(null, null, null);
-        await printLogs.printBankLogs(null, null, null);
+        // await printLogs.printTrustLogs(null, null, null);
+        // await printLogs.printPremiums(7);
+        // await printLogs.printBankPaymentAdvice();
+        // await printLogs.printAdjustorLogs(null, null, null);
+        // await printLogs.printSettlementLogs(null, null, null);
+        // await printLogs.printPolicyLogs(null, null, null);
+        // await printLogs.printBondLogs(null, null, null);
+        // await printLogs.printPoolLogs(null, null, null);
+        // await printLogs.printBankLogs(null, null, null);
     });
 });
