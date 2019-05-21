@@ -20,11 +20,9 @@ const td = require("../misc/testData.js");
 exports.createBond = async (_bondPrincipal, _hashOfReferenceBond, _bondOwnerAccountIdx) => {
     // Retrieve the hash map info from the bond firstIdx, nextIdx, count
     const bondHashMapInfo = await td.bond.hashMap();
-    console.log("Hello");
     // Create a new Bond
     const tx = await td.bond.createBond(_bondPrincipal, _hashOfReferenceBond, {from: td.accounts[_bondOwnerAccountIdx]});
     // Extract the decoded logs
-    console.log("Hello");
     const logs = td.abiDecoder.decodeLogs(tx.receipt.rawLogs);
 
     // Get the bond hash

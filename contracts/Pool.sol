@@ -96,27 +96,26 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         private
         returns (uint)
     {
+        // Status: It is midnight - not yesterday and not tomorrow - exactly midnight
+        // Terms:
+        //  * Yesterday  - refers to the day that has just passed
+        //  * Tomorrow   - refers to the day that is about to start
+
+
         // ********************************************************************************
-        // *** (1) Set yesterdayPoolDay as the currentPoolDay and increase current day
+        // *** (0) What has already been completed and enabling works
         // ********************************************************************************
 
+        // Set yesterdayPoolDay and tomorrowPoolDay and increase currentPoolDay by 1
         uint yesterdayPoolDay = currentPoolDay;
-        // Current pool day is the NEW day at 12am (midnight)
+        uint tomorrowPoolDay = currentPoolDay + 1;
         currentPoolDay++;
         
-
         // ********************************************************************************
-        // *** (2) BANK PAYMENTS - yesterday's total premium and overflow payment
+        // *** (1) Process payments for yesterday (Premium, Pool operators and Trust)
         // ********************************************************************************
 
-        uint bondMaturityPayoutAmountNext3Days_Cu = 0;
-        uint bondMaturityPayoutFuturePerDay_Cu = 0;
-
-        // Retrieve the payout amounts from the bond contract
-        (bondMaturityPayoutAmountNext3Days_Cu, bondMaturityPayoutFuturePerDay_Cu) = 
-            Bond(getBondAdr()).getBondMaturityPayouts(currentPoolDay, currentPoolDay + (DURATION_TO_BOND_MATURITY_SEC / 1 days));
-
-        // Get the total number of policy risk points
+        // Get the total number of policy risk points (sum of all active policies' risk points)
         uint totalPolicyRiskPoints = Policy(getPolicyAdr()).totalIssuedPolicyRiskPoints();
 
         // Add log entry
@@ -126,20 +125,16 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         uint totalPremiumYesterday_Cu = 
             (totalPolicyRiskPoints * Policy(getPolicyAdr()).premiumPerRiskPoint_Cu_Ppm(yesterdayPoolDay, 0)) / (10**6);
 
-        // Create payment advice
+        // Create bank payment advice
         if (totalPremiumYesterday_Cu > 0) {
-            //bytes32 help = bytes32(abi.encodePacked(getPoolAdr(), "    "));
             // Create payment advice for the premium payment
-            Bank(getBankAdr()).createPaymentAdvice(
-                Lib.PaymentAdviceType.Premium, 
-                BOND_ACCOUNT_PAYMENT_HASH, 
-                bytes32(yesterdayPoolDay), 
-                totalPremiumYesterday_Cu,
-                bytes32(uint256(uint160(getPoolAdr())))
-                );
+            Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Premium, BOND_ACCOUNT_PAYMENT_HASH, 
+                bytes32(yesterdayPoolDay), totalPremiumYesterday_Cu, bytes32(uint256(uint160(getPoolAdr()))));
             
             // Adjust WC_Bal_PA_Cu
             WC_Bal_PA_Cu -= totalPremiumYesterday_Cu;
+            // Adjust WC_Bal_BA_Cu immediately event though the bank transaction has not been completed
+            WC_Bal_BA_Cu += totalPremiumYesterday_Cu;
         
             // Calculate the amounts to pay for safety net and pool operators
             uint paymentTrust = (totalPremiumYesterday_Cu * TRUST_FEE_PPT) / 10**3;
@@ -166,21 +161,30 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         // Add log entries
         emit LogPool(bytes32("PremiumCu"), yesterdayPoolDay, totalPremiumYesterday_Cu, now);
 
-        // If the amount held in the Bond Account exceeds 5 times bondMaturityPayoutFuturePerDay_Cu balance create an OVERFLOW PAYMENT advice
-        if (WC_Bal_BA_Cu > 5 * bondMaturityPayoutFuturePerDay_Cu) {
+        // ********************************************************************************
+        // *** (2) Process overflow payment for yesterday if applicable
+        // ********************************************************************************
+
+        (uint bondMaturityAverage_Cu, uint bondMaturityMaxSlope_Cu) = 
+            Bond(getBondAdr()).calculateAvgBondMaxBondSlope(tomorrowPoolDay, WC_Bal_BA_Cu);
+      
+        // If the average of maturing bonds per day greater than max slope per day
+        if (bondMaturityAverage_Cu > bondMaturityMaxSlope_Cu) {
             // Calculate the overflow amount
-            uint overflowAmount_Cu = WC_Bal_BA_Cu - (5 * bondMaturityPayoutFuturePerDay_Cu);
-            // Create payment advice for funds being sent to the Funding Account
+            uint overflowAmount_Cu = bondMaturityAverage_Cu - bondMaturityMaxSlope_Cu;
+            // Create the payment advice
             Bank(getBankAdr()).createPaymentAdvice(Lib.PaymentAdviceType.Overflow, FUNDING_ACCOUNT_PAYMENT_HASH, 
                 bytes32(yesterdayPoolDay), overflowAmount_Cu, bytes32(uint256(uint160(getPoolAdr()))));
             // Adjust WC_Bal_BA_Cu
             WC_Bal_BA_Cu -= overflowAmount_Cu;
+            // Adjust WC_Bal_FA_Cu immediately event though the bank transaction has not been completed
+            WC_Bal_FA_Cu += overflowAmount_Cu;
             // Add log entries
             emit LogPool(bytes32("OverflowCu"), yesterdayPoolDay, overflowAmount_Cu, now);
         }
 
         // ********************************************************************************
-        // *** (3) RECALCULATION of today's insurance pool variables (IP Yield, IP Gradient, WC_BOND, WC_DELTA)
+        // *** (3) RECALCULATION of tomorrow's insurance pool variables (IP Yield, IP Gradient, WC_BOND, WC_DELTA)
         // ********************************************************************************
 
         // Get the expense forecast for the new day
@@ -237,36 +241,23 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         }
 
         // Add log entries
-        emit LogPool(bytes32("WcExpenseForecastCu"), currentPoolDay, WC_Exp_Cu, now);
-        emit LogPool(bytes32("WcBondCu"), currentPoolDay, WC_Bond_Cu, now);
-        emit LogPool(bytes32("BondGradientPpq"), currentPoolDay, B_Gradient_Ppq, now);
-        emit LogPool(bytes32("BondYieldPpb"), currentPoolDay, B_Yield_Ppb, now);
+        emit LogPool(bytes32("WcExpenseForecastCu"), tomorrowPoolDay, WC_Exp_Cu, now);
+        emit LogPool(bytes32("WcBondCu"), tomorrowPoolDay, WC_Bond_Cu, now);
+        emit LogPool(bytes32("BondGradientPpq"), tomorrowPoolDay, B_Gradient_Ppq, now);
+        emit LogPool(bytes32("BondYieldPpb"), tomorrowPoolDay, B_Yield_Ppb, now);
 
 
         // ********************************************************************************
-        // *** CALCULATION of todays's insurance PREMIUM PER RISK POINT
+        // *** (4) CALCULATION of tomorrow's insurance PREMIUM PER RISK POINT
         // ********************************************************************************
 
-        // Today's total premium to be charged
-        uint totalPremiumTargetToday_Cu = bondMaturityPayoutFuturePerDay_Cu;
-        
-        // Check if [required delta amount to cover bond payouts over next 3 days] is greater then [average bond maturity payout amount (that would be charged by default)]
-        if (bondMaturityPayoutAmountNext3Days_Cu > WC_Bal_BA_Cu + totalPremiumYesterday_Cu) {
-            // Check if the required demand for topping up is greater than the default bond Maturity payout future per day value
-            if (bondMaturityPayoutAmountNext3Days_Cu - WC_Bal_BA_Cu - totalPremiumYesterday_Cu > bondMaturityPayoutFuturePerDay_Cu)
-                totalPremiumTargetToday_Cu = bondMaturityPayoutAmountNext3Days_Cu - WC_Bal_BA_Cu - totalPremiumYesterday_Cu;
-        }
-
-        // Calculate the premium per risk point in Cu Ppm if policies with risk points exist
-        Policy(getPolicyAdr()).setPremiumPerRiskPoint(
-            (totalPolicyRiskPoints > 0 ? (totalPremiumTargetToday_Cu * (10**6))/totalPolicyRiskPoints : 0), 
-            currentPoolDay
-        );
+        // Calculate the premium per risk point
+        Policy(getPolicyAdr()).setPremiumPerRiskPoint(bondMaturityAverage_Cu, bondMaturityMaxSlope_Cu, tomorrowPoolDay);
 
         // Add log entries
-        emit LogPool(bytes32("BondPayoutNext3DaysCu"), currentPoolDay, bondMaturityPayoutAmountNext3Days_Cu, now);
-        emit LogPool(bytes32("BondPayoutFutureCu"), currentPoolDay, bondMaturityPayoutFuturePerDay_Cu, now);
-        emit LogPool(bytes32("PremiumPerRiskPointPpm"), currentPoolDay, Policy(getPolicyAdr()).premiumPerRiskPoint_Cu_Ppm(currentPoolDay, 0), now);
+        emit LogPool(bytes32("BondMaturityAverageCu"), tomorrowPoolDay, bondMaturityAverage_Cu, now);
+        emit LogPool(bytes32("BondMaturityMaxSlopeCu"), tomorrowPoolDay, bondMaturityMaxSlope_Cu, now);
+        emit LogPool(bytes32("PremiumPerRiskPointPpm"), tomorrowPoolDay, Policy(getPolicyAdr()).premiumPerRiskPoint_Cu_Ppm(tomorrowPoolDay, 0), now);
 
         // ********************************************************************************
         // *** Book the timer notification for the first batch of policy processing
@@ -362,13 +353,11 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         returns (bool success, bytes32 info, bytes32 internalReferenceHash)
     {
         // ******************************************************************************************
-        // *** Payment into the Bond Account
+        // *** Premium payment | Internal payment from the Premium Account to the Bond Account
         // ******************************************************************************************
         if (_accountType == Lib.AccountType.BondAccount) {
             // Verify if the payment has been received from the Premium holding account
             if (_paymentAccountHash == PREMIUM_ACCOUNT_PAYMENT_HASH) {
-                // Increase the balance in the Bond Account
-                WC_Bal_BA_Cu += _bankCreditAmount_Cu;
                 // return success
                 return (true, 0x0, bytes32(uint256(uint160(getPoolAdr()))));
             } else {
@@ -380,8 +369,6 @@ contract Pool is SetupI, IntAccessI, NotificationI {
         // *** Overflow payment | Internal payment from the Bond Account to the Funding Account
         // ******************************************************************************************
         } else if ((_paymentAccountHash == BOND_ACCOUNT_PAYMENT_HASH) && (_accountType == Lib.AccountType.FundingAccount)) {
-            // If it is an overflow payment increase Funding account balance
-            WC_Bal_FA_Cu += _bankCreditAmount_Cu;
             // return success
             return (true, 0x0, bytes32(uint256(uint160(getPoolAdr()))));
         }

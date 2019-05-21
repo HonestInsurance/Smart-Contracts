@@ -329,48 +329,46 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
     // *** Miscellaneous functions
     // *******************************
 
-    // /**@dev Calculates and returns the bond payout amounts for all the bonds when they mature.
-    //  * @param _beginDay The starting day (currentPoolDay) to start adding the bond maturity amounts
-    //  * @param _endDay The last day to add the the bond maturity aount for
-    //  * @param _wcBondBalance_Cu The balance of the Bond Account
-    //  * @param _minBondAccountBalanceDays Minimum Bond Account balance measured in days
-    //  * @return bondMaturityAveragePerDay_Cu 
-    //  * @return bondMaturityMaxSlopePerDay_Cu 
-    //  */
-    // function calculateAvgBondMaxBondSlope(
-    //     uint _beginDay, 
-    //     uint _endDay, 
-    //     uint _wcBondBalance_Cu, 
-    //     uint _minBondAccountBalanceDays
-    //     )
-    //     public
-    //     view
-    //     returns (uint bondMaturityAveragePerDay_Cu, uint bondMaturityMaxSlopePerDay_Cu)
-    // {
-    //     // Iterate through the hash mapping of all bonds to calculate the total amount
-    //     for (uint i = _beginDay; i<=_endDay; i++) {
-    //         bondMaturityAveragePerDay_Cu += bondMaturityPayoutAmount[i];
-    //     }
-    //     // Calculate the average daily bond maturity amount
-    //     bondMaturityAveragePerDay_Cu /= (_endDay - _beginDay);
+    /**@dev Calculates and returns the bond payout amounts for all the bonds when they mature.
+     * @param _tommorowPoolDay The starting day (tomorrowPoolDay) to start adding the bond maturity amounts
+     * @param _wcBondBalance_Cu The balance of the Bond Account
+     * @return bondMaturityAverage_Cu Average bond maturity amounts per day
+     * @return bondMaturityMaxSlope_Cu Maximum Slope per day
+     */
+    function calculateAvgBondMaxBondSlope(
+        uint _tommorowPoolDay, 
+        uint _wcBondBalance_Cu
+        )
+        public
+        view
+        returns (uint bondMaturityAverage_Cu, uint bondMaturityMaxSlope_Cu)
+    {
+        // Calculate the pool day the on which bonds are maturing at the very latest
+        uint lastMaturingBondPoolDay = _tommorowPoolDay + (DURATION_TO_BOND_MATURITY_SEC / 1 days);
+        // Iterate through the hash mapping of all bonds to calculate the total amount
+        for (uint i = _tommorowPoolDay; i<=lastMaturingBondPoolDay; i++) {
+            bondMaturityAverage_Cu += bondMaturityPayoutAmount[i];
+        }
+        // Calculate the average daily bond maturity amount
+        bondMaturityAverage_Cu /= (lastMaturingBondPoolDay - _tommorowPoolDay);
 
-    //     // Variable is required to calculate the running cumulated bond maturity balance
-    //     uint cumulatedDailyBalance_Cu = 0;
-    //     // Current slope
-    //     uint slope_Cu = 0;
-    //     // Calculation of the max slope
-    //     for (uint i = _beginDay; i<=_endDay; i++) {
-    //         // Add the bond maturity balance of the current day
-    //         cumulatedDailyBalance_Cu += bondMaturityPayoutAmount[i];
-    //         // Calculate the slope for this day
-    //         slope_Cu = (cumulatedDailyBalance_Cu - _wcBondBalance_Cu + _minBondAccountBalanceDays * bondMaturityAveragePerDay_Cu) / (i - _beginDay + 1);
-    //         // If this slope is greater than any previously calculated slope set it as the new max slope
-    //         if (slope_Cu > bondMaturityMaxSlopePerDay_Cu) {
-    //             // Set the new max slope
-    //             bondMaturityMaxSlopePerDay_Cu = slope_Cu;
-    //         }
-    //     }
-    // }
+        // Variable is required to calculate the running cumulated bond maturity balance
+        uint cumulatedDailyBalance_Cu = 0;
+        // Current slope - this value can also be negative!!!
+        int slope_Cu = 0;
+        // Calculation of the max slope
+        for (uint i = _tommorowPoolDay; i<=lastMaturingBondPoolDay; i++) {
+            // Add the bond maturity balance of the current day
+            cumulatedDailyBalance_Cu += bondMaturityPayoutAmount[i];
+            // Calculate the slope for this day
+            slope_Cu = (int(cumulatedDailyBalance_Cu) - int(_wcBondBalance_Cu) + int(MIN_BOND_ACCOUNT_BALANCE_DAYS) * int(bondMaturityAverage_Cu)) / (int(i) - int(_tommorowPoolDay) + 1);
+            // If this slope is greater than any previously calculated slope set it as the new max slope
+            if (slope_Cu > int(bondMaturityMaxSlope_Cu)) {
+                // Set the new max slope
+                bondMaturityMaxSlope_Cu = uint(slope_Cu);
+            }
+        }
+    }
 
 
     /**@dev Calculates and returns the bond payout amounts for all the bonds when they mature.

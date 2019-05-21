@@ -58,12 +58,10 @@ async function processPaymentAdvice(_idx) {
             web3.utils.padLeft(td.pool.address.toLowerCase(), 64),
             '');
 
-        // Adjust (WC_Bal_BA_Cu, WC_BAL_FA_CU)
-        if (paymentAdvice.adviceType.toNumber() == 1)
-            td.wc_bal_ba_cu = +td.wc_bal_ba_cu + +paymentAdvice.amount.toNumber();
-        else td.wc_bal_fa_cu = +td.wc_bal_fa_cu + +paymentAdvice.amount.toNumber();
-        
         // Verify if WC_Bal_FA_Cu and WC_Bal_BA_Cu are correct
+        // NOTE: The internal transactions balances have already been adjusted during the overnight processing
+        //       The amounts have been debited and credited from the accounts right away
+        //           => Hence wc_bal_ba_cu and wc_balfa_cu do NOT need to be adjusted here.
         expect(td.wc_bal_ba_cu).to.be.eql((await td.pool.WC_Bal_BA_Cu()).toNumber());
         expect(td.wc_bal_fa_cu).to.be.eql((await td.pool.WC_Bal_FA_Cu()).toNumber());
     }

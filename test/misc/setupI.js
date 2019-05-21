@@ -13,6 +13,8 @@ exports.WC_POOL_TARGET_TIME_SEC = 90 * 24 * 3600;                // (90 Days)
 exports.DURATION_TO_BOND_MATURITY_SEC = 90 * 24 * 3600;          // (90 Days)
 exports.DURATION_BOND_LOCK_NEXT_STATE_SEC = 2 * 24 * 3600;       // (2 Days)
 exports.DURATION_WC_EXPENSE_HISTORY_DAYS = 14;                   // (14 Days)
+exports.MIN_BOND_ACCOUNT_BALANCE_DAYS = 3;                       // (3 Days)
+
 
 // Yield constants
 exports.YAC_PER_INTERVAL_PPB = 20000000;               // (2% per hour)
