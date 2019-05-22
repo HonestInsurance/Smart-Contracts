@@ -370,33 +370,6 @@ contract Bond is SetupI, IntAccessI, NotificationI, HashMapI {
         }
     }
 
-
-    /**@dev Calculates and returns the bond payout amounts for all the bonds when they mature.
-     * @param _beginDay The starting day (currentPoolDay) to start adding the bond maturity amounts
-     * @param _endDay The last day to add the the bond maturity aount for
-     * @return bondMaturityPayoutAmountNext3Days_Cu Total amount of expected bond payouts for today, tomorrow and the day after tomorrow.
-     * @return bondMaturityPayoutFuturePerDay_Cu Total amount of expected bond payouts in the future on a per day basis
-     */
-    function getBondMaturityPayouts(uint _beginDay, uint _endDay)
-        public
-        view
-        returns (uint bondMaturityPayoutAmountNext3Days_Cu, uint bondMaturityPayoutFuturePerDay_Cu)
-    {
-        // Iterate through the hash mapping of all bonds between the first and the last idx
-        for (uint i = _beginDay; i<=_endDay; i++) {
-            bondMaturityPayoutFuturePerDay_Cu += bondMaturityPayoutAmount[i];
-        }
-
-        // Calculate the combined bond maturity payout amounts for today, tomorrow and the day after tomorrow
-        bondMaturityPayoutAmountNext3Days_Cu = bondMaturityPayoutAmount[_beginDay] + bondMaturityPayoutAmount[_beginDay + 1] + bondMaturityPayoutAmount[_beginDay + 2];
-        
-        // Calculate the bond maturity payouts for the future on a per day basis
-        bondMaturityPayoutFuturePerDay_Cu /= (_endDay - _beginDay);
-
-        // Return the
-        return (bondMaturityPayoutAmountNext3Days_Cu, bondMaturityPayoutFuturePerDay_Cu);
-    }
-
     /**@dev Calculates the maturity time for the bond and schedules a ping notification
      * @param _bondHash The hash of the bond to schedule the maturity ping notification for
      */
